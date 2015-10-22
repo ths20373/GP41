@@ -92,7 +92,7 @@ MPU6050 mpu;
 // from the FIFO. Note this also requires gravity vector calculations.
 // Also note that yaw/pitch/roll angles suffer from gimbal lock (for
 // more info, see: http://en.wikipedia.org/wiki/Gimbal_lock)
-//#define OUTPUT_READABLE_YAWPITCHROLL
+#define OUTPUT_READABLE_YAWPITCHROLL
 
 // uncomment "OUTPUT_READABLE_REALACCEL" if you want to see acceleration
 // components with gravity removed. This acceleration reference frame is
@@ -112,7 +112,7 @@ MPU6050 mpu;
 //#define OUTPUT_TEAPOT
 
 // uncomment "OUTPUT_READABLE_MANY" if you want output most of the values
-#define OUTPUT_READABLE_MANY
+//#define OUTPUT_READABLE_MANY
 
 #define LED_PIN 13 // (Arduino is 13, Teensy is 11, Teensy++ is 6)
 bool blinkState = false;
@@ -268,6 +268,7 @@ void loop() {
         // (this lets us immediately read more without waiting for an interrupt)
         fifoCount -= packetSize;
 
+        /* ↓使わない予定 */
         #ifdef OUTPUT_READABLE_QUATERNION
             // display quaternion values in easy matrix form: w x y z
             mpu.dmpGetQuaternion(&q, fifoBuffer);
@@ -281,6 +282,7 @@ void loop() {
             Serial.println(q.z);
         #endif
 
+        /* ↓使わない予定 */
         #ifdef OUTPUT_READABLE_EULER
             // display Euler angles in degrees
             mpu.dmpGetQuaternion(&q, fifoBuffer);
@@ -293,6 +295,7 @@ void loop() {
             Serial.println(euler[2] * 180/M_PI);
         #endif
 
+        /* ↓ここが姿勢角なので使う予定 */
         #ifdef OUTPUT_READABLE_YAWPITCHROLL
             // display Euler angles in degrees
             mpu.dmpGetQuaternion(&q, fifoBuffer);
@@ -305,7 +308,9 @@ void loop() {
             Serial.print("\t");
             Serial.println(ypr[2] * 180/M_PI);
         #endif
-#ifdef OUTPUT_READABLE_MANY
+        
+        /* ↓全部表示使わない */
+        #ifdef OUTPUT_READABLE_MANY
             // display all
             mpu.dmpGetQuaternion(&q, fifoBuffer);
             mpu.dmpGetAccel(&aa, fifoBuffer);
@@ -357,6 +362,7 @@ void loop() {
             Serial.println(aaWorld.z);
             }
 #endif
+        /* ↓使わない予定 */
         #ifdef OUTPUT_READABLE_REALACCEL
             // display real acceleration, adjusted to remove gravity
             mpu.dmpGetQuaternion(&q, fifoBuffer);
@@ -371,6 +377,7 @@ void loop() {
             Serial.println(aaReal.z);
         #endif
 
+        /* ↓使わない予定 */
         #ifdef OUTPUT_READABLE_WORLDACCEL
             // display initial world-frame acceleration, adjusted to remove gravity
             // and rotated based on known orientation from quaternion
