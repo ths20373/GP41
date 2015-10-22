@@ -1,3 +1,7 @@
+/* サーボ用 */
+#include <Servo.h> 
+Servo servo;        //Servoオブジェクトを作成
+
 // Arduino Wire library is required if I2Cdev I2CDEV_ARDUINO_WIRE implementation
 // is used in I2Cdev.h
 #include "Wire.h"
@@ -20,14 +24,17 @@ MPU6050 mpu;
 // from the FIFO. Note this also requires gravity vector calculations.
 // Also note that yaw/pitch/roll angles suffer from gimbal lock (for
 // more info, see: http://en.wikipedia.org/wiki/Gimbal_lock)
-//#define OUTPUT_READABLE_YAWPITCHROLL
+#define OUTPUT_READABLE_YAWPITCHROLL
 
 // uncomment "OUTPUT_TEAPOT" if you want output that matches the
 // format used for the InvenSense teapot demo
 //#define OUTPUT_TEAPOT
 
 // uncomment "OUTPUT_READABLE_MANY" if you want output most of the values
-#define OUTPUT_READABLE_MANY
+//#define OUTPUT_READABLE_MANY
+
+//サーボとの結合テスト用
+//#define DEBUFG_SERVO
 
 #define LED_PIN 13 // (Arduino is 13, Teensy is 11, Teensy++ is 6)
 bool blinkState = false;
@@ -70,6 +77,8 @@ void dmpDataReady() {
 // ================================================================
 
 void setup() {
+    servo.attach(9);  //D9ピンをサーボの信号線として設定
+
     // join I2C bus (I2Cdev library doesn't do this automatically)
     Wire.begin();
 
@@ -195,6 +204,9 @@ void loop() {
             Serial.print(ypr[1] * 180/M_PI);
             Serial.print("\t");
             Serial.println(ypr[2] * 180/M_PI);
+            #ifdef DEBUG_SERVO
+              servo.write((ypr[0] * 180/M_PI) + 24); // サーボの角度を90°に設定
+            #endif
         #endif
         
         /* ↓全部表示(デバッグ用) */
@@ -251,7 +263,7 @@ void loop() {
             }
         #endif
   
-        /* デバッグ用 */    
+        /* ティーポットデバッグ用 */    
         #ifdef OUTPUT_TEAPOT
             // display quaternion values in InvenSense Teapot demo format:
             teapotPacket[2] = fifoBuffer[0];
