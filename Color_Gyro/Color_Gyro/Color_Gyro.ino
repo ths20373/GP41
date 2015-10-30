@@ -45,6 +45,10 @@ float ypr[3];           // [yaw, pitch, roll]   yaw/pitch/roll container and gra
 // packet structure for InvenSense teapot demo
 uint8_t teapotPacket[14] = { '$', 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0x00, 0x00, '\r', '\n' };
 
+#define Color_Addr 0x29
+
+#define Gyro_Addr 0x68
+
 // ================================================================
 // ===               INTERRUPT DETECTION ROUTINE                ===
 // ================================================================
@@ -62,6 +66,7 @@ void dmpDataReady() {
 
 void setup() {
   Gyro_I2C_SET();
+  I2C_SET();
 }
 
 // ================================================================
@@ -70,6 +75,8 @@ void setup() {
 
 void loop() {
   Gyro_I2C_GET();
+  I2C_GET();
+  //delay(100);
 }
 
 // ================================================================
@@ -197,7 +204,45 @@ void Gyro_I2C_GET() {
     Serial.print("\t");
     Serial.print(ypr[1] * 180 / M_PI);
     Serial.print("\t");
-    Serial.println(ypr[2] * 180 / M_PI);
+    //Serial.println(ypr[2] * 180 / M_PI);
+    Serial.print(ypr[2] * 180 / M_PI);
+    Serial.print("\t");
 #endif
   }
 }
+
+/* 色センサに書き込み（必要なこと？） */
+void I2C_SET(void) {
+  Wire.beginTransmission(Color_Addr);
+  Wire.write(0x00);     //ENABLE レジスタ指定
+  Wire.write(0x03);     //PON = 1,  AEN = 1　にセット
+  Wire.endTransmission();
+}
+
+void I2C_GET(void) {
+  int cnt_data = 32;
+  byte data[cnt_data];
+  int cnt_out = 0;
+  byte out_data[4];
+
+  //32Byte分の全レジスタ情報取得
+  cnt_out = Wire.requestFrom(Color_Addr, cnt_data);
+  if (cnt_out >= cnt_data)
+  {
+    for (int i = 0; i < cnt_data; i++) {
+      data[i] = Wire.read();
+    }
+  }
+
+  //RGB値を抜き取り
+  out_data[0] = data[21];
+  out_data[1] = data[23];
+  out_data[2] = data[25];
+  out_data[3] = data[27];
+
+  Serial.print(out_data[0]);    Serial.print(",");
+  Serial.print(out_data[1]);    Serial.print(",");
+  Serial.print(out_data[2]);    Serial.print(",");
+  Serial.println(out_data[3]);
+}
+

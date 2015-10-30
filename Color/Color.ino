@@ -43,6 +43,7 @@ void I2C_GET(void) {
   Serial.println(out_data[3]);
 }
 
+/* 色センサに書き込み（必要なこと？） */
 void I2C_SET(void) {
   Wire.beginTransmission(Color_Addr);
   Wire.write(0x00);     //ENABLE レジスタ指定
