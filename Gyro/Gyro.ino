@@ -51,7 +51,7 @@ MPU6050 mpu;
 
 // uncomment "OUTPUT_TEAPOT" if you want output that matches the
 // format used for the InvenSense teapot demo
-//#define OUTPUT_TEAPOT
+#define OUTPUT_TEAPOT
 
 #define LED_PIN 13 // (Arduino is 13, Teensy is 11, Teensy++ is 6)
 bool blinkState = false;
@@ -128,20 +128,20 @@ void setup() {
     Serial.println(mpu.testConnection() ? F("MPU6050 connection successful") : F("MPU6050 connection failed"));
 
     // wait for ready
-    Serial.println(F("\nSend any character to begin DMP programming and demo: "));
-    while (Serial.available() && Serial.read()); // empty buffer
-    while (!Serial.available());                 // wait for data
-    while (Serial.available() && Serial.read()); // empty buffer again
+    //Serial.println(F("\nSend any character to begin DMP programming and demo: "));
+    //while (Serial.available() && Serial.read()); // empty buffer
+    //while (!Serial.available());                 // wait for data
+    //while (Serial.available() && Serial.read()); // empty buffer again
 
     // load and configure the DMP
     Serial.println(F("Initializing DMP..."));
     devStatus = mpu.dmpInitialize();
 
     // supply your own gyro offsets here, scaled for min sensitivity
-    mpu.setXGyroOffset(220);
-    mpu.setYGyroOffset(76);
-    mpu.setZGyroOffset(-85);
-    mpu.setZAccelOffset(1788); // 1688 factory default for my test chip
+    mpu.setXGyroOffset(76);
+    mpu.setYGyroOffset(-99);
+    mpu.setZGyroOffset(44);
+    mpu.setZAccelOffset(1963); // 1688 factory default for my test chip
 
     // make sure it worked (returns 0 if so)
     if (devStatus == 0) {
