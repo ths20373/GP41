@@ -61,7 +61,7 @@ int deg1 = 0;    // サーボの角度
 int deg2 = 0;    // サーボの角度
 
 /* サーボのデバッグ用宣言 */
-#define DEBUG_SERVO
+//#define DEBUG_SERVO
 
 // ================================================================
 // ===               INTERRUPT DETECTION ROUTINE                ===
@@ -81,9 +81,13 @@ void dmpDataReady() {
 void setup() {
   Gyro_I2C_SET();
   //Color_I2C_SET();
+#ifdef DEBUG_SERVO
+
   servo1.attach(9);  //D9ピンをサーボの信号線として設定
   servo2.attach(10);  //D9ピンをサーボの信号線として設定
-
+  servo1.write(90); // サーボの角度を設定
+  servo2.write(90); // サーボの角度を設定
+#endif
 }
 
 // ================================================================
@@ -225,13 +229,16 @@ void Gyro_I2C_GET() {
     deg1 = ypr[0] * 180 / M_PI;   //センサの値を取得
     deg2 = ypr[2] * 180 / M_PI;   //センサの値を取得
     deg1 = int(deg1);   //小数点切り捨て
-    //    deg1 += 180; //サーボ1の初期位置を180度にする
+    deg1 += 90; //サーボ1の初期位置を180度にする
     deg2 = int(deg2);   //小数点切り捨て
-    //    deg2 += 180; //サーボ2の初期位置を180度にする
+    deg2 += 90; //サーボ2の初期位置を180度にする
     servo1.write(deg1); // サーボの角度を設定
     servo2.write(deg2); // サーボの角度を設定
+    Serial.print("deg1\t");
+    Serial.print(deg1);
+    Serial.print("deg2\t");
+    Serial.println(deg2);
 #endif
-
   }
 }
 
