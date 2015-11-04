@@ -133,10 +133,10 @@ void Gyro_I2C_SET() {
   devStatus = mpu.dmpInitialize();
 
   // supply your own gyro offsets here, scaled for min sensitivity
-  mpu.setXGyroOffset(220);
-  mpu.setYGyroOffset(76);
-  mpu.setZGyroOffset(-85);
-  mpu.setZAccelOffset(1788); // 1688 factory default for my test chip
+  mpu.setXGyroOffset(75);
+  mpu.setYGyroOffset(-101);
+  mpu.setZGyroOffset(44);
+  mpu.setZAccelOffset(1962); // 1688 factory default for my test chip
 
   // make sure it worked (returns 0 if so)
   if (devStatus == 0) {
