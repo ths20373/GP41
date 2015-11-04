@@ -72,8 +72,6 @@ void dmpDataReady() {
   mpuInterrupt = true;
 }
 
-
-
 // ================================================================
 // ===                      INITIAL SETUP                       ===
 // ================================================================
@@ -82,7 +80,6 @@ void setup() {
   Gyro_I2C_SET();
   //Color_I2C_SET();
 #ifdef DEBUG_SERVO
-
   servo1.attach(9);  //D9ピンをサーボの信号線として設定
   servo2.attach(10);  //D9ピンをサーボの信号線として設定
   servo1.write(90); // サーボの角度を設定
