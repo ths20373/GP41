@@ -67,6 +67,7 @@ int deg2 = 0;    // サーボの角度
 #include <Math.h>
 byte i2cWriteBuffer[10];
 byte i2cReadBuffer[10];
+String arrow_color;
 #define SensorAddressWrite 0x29 //
 #define SensorAddressRead 0x29 // 
 #define EnableAddress 0xa0 // register address + command bits
@@ -77,6 +78,9 @@ byte i2cReadBuffer[10];
 #define IDAddress 0xb2 // register address + command bits
 #define ColorAddress 0xb4 // register address + command bits
 
+String current_color = "none";
+String prev_color = "none";
+unsigned int pull_power = 0;
 
 
 // ================================================================
@@ -93,11 +97,16 @@ void dmpDataReady() {
 // ================================================================
 
 void setup() {
+  //カラーセンサのLEDを消す
   pinMode(3, OUTPUT);   // 出力に設定
   digitalWrite(3, LOW);   // LEDをオン
+  /* ジャイロセンサ */
   Gyro_I2C_SET();
+  /* カラーセンサ */
   init_TCS34725();
   get_TCS34725ID();     // get the device ID, this is just a test to see if we're connected
+  /* ロボットに伝える */
+
 #ifdef DEBUG_SERVO
   servo1.attach(9);  //D9ピンをサーボの信号線として設定
   servo2.attach(10);  //D9ピンをサーボの信号線として設定
@@ -111,8 +120,12 @@ void setup() {
 // ================================================================
 
 void loop() {
-  // Gyro_I2C_GET();
+  /* ジャイロセンサの値取得 */
+  Gyro_I2C_GET();
+  /* カラーセンサの値取得 */
   get_Colors();
+  /* 取得した値をロボットに伝える */
+  arrow_status();
 }
 
 // ================================================================
@@ -229,8 +242,6 @@ void Gyro_I2C_GET() {
     // track FIFO count here in case there is > 1 packet available
     // (this lets us immediately read more without waiting for an interrupt)
     fifoCount -= packetSize;
-
-#ifdef OUTPUT_READABLE_YAWPITCHROLL
     // display Euler angles in degrees
     mpu.dmpGetQuaternion(&q, fifoBuffer);
     mpu.dmpGetGravity(&gravity, &q);
@@ -240,8 +251,9 @@ void Gyro_I2C_GET() {
     Serial.print("\t");
     Serial.print(ypr[1] * 180 / M_PI);
     Serial.print("\t");
-    Serial.println(ypr[2] * 180 / M_PI);
-#endif
+    Serial.print(ypr[2] * 180 / M_PI);
+    Serial.print("\t");
+
 #ifdef DEBUG_SERVO
     deg1 = ypr[0] * 180 / M_PI;   //センサの値を取得
     deg2 = ypr[2] * 180 / M_PI;   //センサの値を取得
@@ -337,26 +349,58 @@ void get_Colors(void)
 
   // send register values to the serial monitor
 
-  Serial.print("clear color=");
-  Serial.print(clear_color, DEC);
-  Serial.print(" red color=");
-  Serial.print(red_color, DEC);
-  Serial.print(" green color=");
-  Serial.print(green_color, DEC);
-  Serial.print(" blue color=");
-  Serial.print(blue_color, DEC);
+  //  Serial.print("clear color=");
+  //  Serial.print(clear_color, DEC);
+  //  Serial.print(" red color=");
+  //  Serial.print(red_color, DEC);
+  //  Serial.print(" green color=");
+  //  Serial.print(green_color, DEC);
+  //  Serial.print(" blue color=");
+  //  Serial.print(blue_color, DEC);
 
 
   // Basic RGB color differentiation can be accomplished by comparing the values and the largest reading will be
   // the prominent color
 
-  if ((red_color > blue_color) && (red_color > green_color))
-    Serial.println("detecting red");
-  else if ((green_color > blue_color) && (green_color > red_color))
-    Serial.println("detecting green");
-  else if ((blue_color > red_color) && (blue_color > green_color))
-    Serial.println("detecting blue");
-  else
-    Serial.println("color not detectable");
+  if ((red_color > blue_color) && (red_color > green_color)) {
+    arrow_color = "red";
+  }  else if ((green_color > blue_color) && (green_color > red_color)) {
+    arrow_color = "green";
+  } else if ((blue_color > red_color) && (blue_color > green_color)) {
+    arrow_color = "blue";
+  } else {
+    arrow_color = "none";
+  }
+}
 
+void arrow_status(void) {
+  prev_color = current_color;
+  current_color = arrow_color;
+
+  if (current_color == "green" && prev_color == "red") {
+    pull_power += 1;
+  } else if (current_color == "blue" && prev_color == "red") {
+    pull_power -= 1;
+  } else if (current_color == "blue" && prev_color == "green") {
+    pull_power += 1;
+  } else if (current_color == "red" && prev_color == "green") {
+    pull_power -= 1;
+  } else if (current_color == "red" && prev_color == "blue") {
+    pull_power += 1;
+  } else if (current_color == "green" && prev_color == "blue") {
+    pull_power -= 1;
+  } else if (current_color == "none" && prev_color == "none") {
+    pull_power = 0;
+  }
+
+  if (pull_power < 0) {
+    pull_power = 0;
+  }
+  Serial.print("color : ");
+  // Serial.print("\t");
+  Serial.print(current_color);
+  Serial.print("\t");
+  Serial.print("pull_power : ");
+  Serial.print("\t");
+  Serial.println(pull_power);
 }
