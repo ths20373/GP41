@@ -53,6 +53,7 @@ uint8_t teapotPacket[14] = { '$', 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0x00, 0x00, '\r'
 #include <Servo.h>
 Servo servo1;        //MEGA:D22,UNO:D9 Servoオブジェクトを作成
 Servo servo2;        //MEGA:D22,UNO:D10 Servoオブジェクトを作成
+
 //グローバル関数の宣言
 char input[4];  // 文字列格納用
 int i = 0;      // 文字数のカウンタ
@@ -80,7 +81,7 @@ String arrow_color;
 
 String current_color = "none";
 String prev_color = "none";
-unsigned int pull_power = 0;
+int pull_power = 0;
 
 
 // ================================================================
@@ -392,12 +393,11 @@ void arrow_status(void) {
   } else if (current_color == "none" && prev_color == "none") {
     pull_power = 0;
   }
-
+  
   if (pull_power < 0) {
     pull_power = 0;
   }
   Serial.print("color : ");
-  // Serial.print("\t");
   Serial.print(current_color);
   Serial.print("\t");
   Serial.print("pull_power : ");
