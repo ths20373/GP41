@@ -7,8 +7,8 @@
 #define PIN_SPI_SS 10     //8
 
 // グローバル変数
-char Toggle1=0;//ステッピングモータ正転用トグル
-char Toggle2=0;//ステッピングモータ逆転用トグル
+char Toggle1 = 0; //ステッピングモータ正転用トグル
+char Toggle2 = 0; //ステッピングモータ逆転用トグル
 
 // 初期化関数(初めに呼び出される)
 void setup() {
@@ -31,7 +31,7 @@ void setup() {
   //SPI通信デバイスリセットコマンド
   L6470_send(0xc0);//ResetRevice
   L6470_setup();//ステッピングモータセットアップ(L6470を設定)
-  
+
   delay(10);
 }
 
@@ -44,53 +44,53 @@ void loop() {
 void warikomi() {
   // 変数定義
   char c;        //warikomi用シリアルデータ格納変数
-  
+
   c = Serial.read();  //シリアルデータ読み込み
 
   //正転
   if (c == 'z') {
-    Toggle1^=1;
-    if(Toggle1==1){
-      Toggle2=0;
+    Toggle1 ^= 1;
+    if (Toggle1 == 1) {
+      Toggle2 = 0;
       L6470_send(0x51);//Run(DIR,SPD),0x51:正転,0x50:逆転　
       L6470_send(0x00);//SPD値(20bit)
       L6470_send(0x10);
       L6470_send(0x00);
       Serial.print("アーム　正転\n");
-    }else{
+    } else {
       L6470_send(0xB0);//SoftStop
       Serial.print("停止\n");
     }
   }
-  
+
   //逆転
   if (c == 'c') {
-    Toggle2^=1;
-    if(Toggle2==1){
-      Toggle1=0;
+    Toggle2 ^= 1;
+    if (Toggle2 == 1) {
+      Toggle1 = 0;
       L6470_send(0x50);//Run(DIR,SPD),0x51:正転,0x50:逆転　
       L6470_send(0x00);//SPD値(20bit)
       L6470_send(0x10);
       L6470_send(0x00);
       Serial.print("アーム　逆転\n");
-    }else{
+    } else {
       L6470_send(0xB0);//SoftStop
       Serial.print("停止\n");
     }
   }
-  
+
 }
 
 //---------------------------------------------------------------------------//
 /* SPI通信でドライバーと通信 */
-void L6470_send(unsigned char add_or_val){
-  digitalWrite(PIN_SPI_SS, LOW); 
+void L6470_send(unsigned char add_or_val) {
+  digitalWrite(PIN_SPI_SS, LOW);
   SPI.transfer(add_or_val); // アドレスもしくはデータ送信。
-  digitalWrite(PIN_SPI_SS, HIGH); 
+  digitalWrite(PIN_SPI_SS, HIGH);
 }
 
 /* ステッピングモータセットアップ */
-void L6470_setup(){
+void L6470_setup() {
   //最大回転スピード
   L6470_send(0x07);//レジスタアドレス
   L6470_send(0x00);//値(10bit),デフォルト0x41
@@ -110,9 +110,5 @@ void L6470_setup(){
   //フ ル ス テ ッ プ,ハ ー フ ス テ ッ プ,1/4, 1/8,…,1/128 ステップの設定
   L6470_send(0x16);//レジスタアドレス
   L6470_send(0x00);//値(8bit)
-  
 }
-
 //---------------------------------------------------------------------------//
-
-
