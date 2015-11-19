@@ -91,18 +91,11 @@ int pull_power = 0;
 #define PIN_SPI_MISO 12   //5
 #define PIN_SPI_SCK 13    //6
 #define PIN_SPI_SS 10     //8
-#define PIN_BUSY 9
-
-// グローバル変数
-char Toggle1 = 0; //ステッピングモータ正転用トグル
-char Toggle2 = 0; //ステッピングモータ逆転用トグル
-
-
+#define PIN_BUSY 9        //1
 
 // ================================================================
 // ===               INTERRUPT DETECTION ROUTINE                ===
 // ================================================================
-
 volatile bool mpuInterrupt = false;     // indicates whether MPU interrupt pin has gone high
 void dmpDataReady() {
   mpuInterrupt = true;
@@ -111,7 +104,6 @@ void dmpDataReady() {
 // ================================================================
 // ===                      INITIAL SETUP                       ===
 // ================================================================
-
 void setup() {
   //カラーセンサのLEDを消す
   pinMode(3, OUTPUT);   // 出力に設定
@@ -123,7 +115,6 @@ void setup() {
   get_TCS34725ID();     // get the device ID, this is just a test to see if we're connected
   /* ステッピングモータ */
   Init_Stepping();
-  /* ロボットに伝える */
 
 #ifdef DEBUG_SERVO
   servo1.attach(9);  //D9ピンをサーボの信号線として設定
@@ -151,7 +142,9 @@ void loop() {
 // ================================================================
 // ===                      MY FUNCTION                         ===
 // ================================================================
-
+// ================================================================
+// ===                   加速度ジャイロ関係                     ===
+// ================================================================
 void Gyro_I2C_SET() {
   // join I2C bus (I2Cdev library doesn't do this automatically)
 #if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
@@ -291,10 +284,9 @@ void Gyro_I2C_GET() {
   }
 }
 
-/*
-Send register address and the byte value you want to write the magnetometer and
-loads the destination register with the value you send
-*/
+// ================================================================
+// ===                     色センサー関連                       ===
+// ================================================================
 void Writei2cRegisters(byte numberbytes, byte command)
 {
   byte i = 0;
@@ -389,7 +381,9 @@ void get_Colors(void) {
     arrow_color = "none";
   }
 }
-
+// ================================================================
+// ===                     弓矢の状態関連                       ===
+// ================================================================
 void Arrow_Status(void) {
   prev_color = current_color;
   current_color = arrow_color;
@@ -420,8 +414,9 @@ void Arrow_Status(void) {
   Serial.print("\t");
   Serial.println(pull_power);
 }
-
-/* ステッピングモータ初期化 */
+// ================================================================
+// ===                ステッピングモーター関連                  ===
+// ================================================================
 void Init_Stepping() {
   Serial.begin(9600);  //シリアル通信開始
   // ピン設定
@@ -430,8 +425,6 @@ void Init_Stepping() {
   pinMode(PIN_SPI_SCK, OUTPUT);   //SPI通信用ピン
   pinMode(PIN_SPI_SS, OUTPUT);    //SPI通信用ピン
   pinMode(PIN_BUSY, INPUT);
-
-  digitalWrite(PIN_BUSY, LOW);
 
   digitalWrite(PIN_SPI_SS, HIGH); //SPI通信用ピンの一部をHighにする
 
@@ -449,51 +442,6 @@ void Init_Stepping() {
   L6470_setup();//ステッピングモータセットアップ(L6470を設定)
   delay(10);
 }
-
-void Interrupt_Stepping() {
-  // 変数定義
-  char c;        //warikomi用シリアルデータ格納変数
-  c = Serial.read();  //シリアルデータ読み込み
-
-  //正転
-  if (c == 'z') {
-    Toggle1 ^= 1;
-    if (Toggle1 == 1) {
-      Toggle2 = 0;
-      L6470_send(0x51);//Run(DIR,SPD),0x51:正転,0x50:逆転　
-      L6470_send(0x00);//SPD値(20bit)
-      L6470_send(0x10);
-      L6470_send(0x00);
-      Serial.print("アーム　正転\n");
-    } else {
-      L6470_send(0xB0);//SoftStop
-      Serial.print("停止\n");
-    }
-  }
-
-  //逆転
-  if (c == 'c') {
-    Toggle2 ^= 1;
-    if (Toggle2 == 1) {
-      Toggle1 = 0;
-      L6470_send(0x50);//Run(DIR,SPD),0x51:正転,0x50:逆転　
-      L6470_send(0x00);//SPD値(20bit)
-      L6470_send(0x10);
-      L6470_send(0x00);
-      Serial.print("アーム　逆転\n");
-    } else {
-      L6470_send(0xB0);//SoftStop
-      Serial.print("停止\n");
-    }
-  }
-}
-
-/* SPI通信でドライバーと通信 */
-//void L6470_send(unsigned char add_or_val) {
-//  digitalWrite(PIN_SPI_SS, LOW);
-//  SPI.transfer(add_or_val); // アドレスもしくはデータ送信。
-//  digitalWrite(PIN_SPI_SS, HIGH);
-//}
 
 /* ステッピングモータセットアップ */
 void L6470_setup() {
@@ -520,6 +468,7 @@ void L6470_setup() {
 
 void Rotate_Stepping() {
   L6470_move(1, 400); //指定方向に指定数ステップする(400で1回転)
+  L6470_move(0, 400); //指定方向に指定数ステップする(400で1回転)
   // L6470_softhiz(); //回転停止、保持トルクなし
 
 }
