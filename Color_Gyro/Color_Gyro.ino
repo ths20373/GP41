@@ -1,3 +1,6 @@
+// ================================================================
+// ===                加速度ジャイロの宣言関連                  ===
+// ================================================================
 // I2Cdev and MPU6050 must be installed as libraries, or else the .cpp/.h files
 // for both classes must be in the include path of your project
 #include "I2Cdev.h"
@@ -45,11 +48,9 @@ float ypr[3];           // [yaw, pitch, roll]   yaw/pitch/roll container and gra
 // packet structure for InvenSense teapot demo
 uint8_t teapotPacket[14] = { '$', 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0x00, 0x00, '\r', '\n' };
 
-#define Color_Addr 0x29
-
-#define Gyro_Addr 0x68
-
-/* サーボの結合 */
+// ================================================================
+// ===                    サーボの宣言関連                      ===
+// ================================================================
 #include <Servo.h>
 Servo servo1;        //MEGA:D22,UNO:D9 Servoオブジェクトを作成
 Servo servo2;        //MEGA:D22,UNO:D10 Servoオブジェクトを作成
@@ -64,6 +65,9 @@ int deg2 = 0;    // サーボの角度
 /* サーボのデバッグ用宣言 */
 //#define DEBUG_SERVO
 
+// ================================================================
+// ===                  カラーセンサの宣言関連                  ===
+// ================================================================
 /* 色判定用に */
 #include <Math.h>
 byte i2cWriteBuffer[10];
@@ -83,15 +87,19 @@ String current_color = "none";
 String prev_color = "none";
 int pull_power = 0;
 
-/* ↓ステッピングモータ用の変数とか宣言とか↓ */
+#define Color_Sensor_LED 3   //モータドライバ側の7pin
+
+// ================================================================
+// ===              ステッピングモータの宣言関連                ===
+// ================================================================
 #include <SPI.h>       //SPI通信
 
 // ピン定義
-#define PIN_SPI_MOSI 11   //7 
-#define PIN_SPI_MISO 12   //5
-#define PIN_SPI_SCK 13    //6
-#define PIN_SPI_SS 10     //8
-#define PIN_BUSY 9        //1
+#define PIN_SPI_MOSI 11   //モータドライバ側の7pin
+#define PIN_SPI_MISO 12   //モータドライバ側の5pin
+#define PIN_SPI_SCK 13    //モータドライバ側の6pin
+#define PIN_SPI_SS 10     //モータドライバ側の8pin
+#define PIN_BUSY 9        //モータドライバ側の1pin
 
 // ================================================================
 // ===               INTERRUPT DETECTION ROUTINE                ===
@@ -106,22 +114,22 @@ void dmpDataReady() {
 // ================================================================
 void setup() {
   //カラーセンサのLEDを消す
-  pinMode(3, OUTPUT);   // 出力に設定
-  digitalWrite(3, LOW);   // LEDをオン
+  pinMode(Color_Sensor_LED, OUTPUT);     // 出力に設定
+  digitalWrite(Color_Sensor_LED, LOW);   // LEDをオフ
+
   /* ジャイロセンサ */
   Gyro_I2C_SET();
+
   /* カラーセンサ */
   init_TCS34725();
-  get_TCS34725ID();     // get the device ID, this is just a test to see if we're connected
+  get_TCS34725ID();
+
   /* ステッピングモータ */
   Init_Stepping();
 
-#ifdef DEBUG_SERVO
-  servo1.attach(9);  //D9ピンをサーボの信号線として設定
-  servo2.attach(10);  //D9ピンをサーボの信号線として設定
-  servo1.write(90); // サーボの角度を設定
-  servo2.write(90); // サーボの角度を設定
-#endif
+  /* サーボモータ */
+  Init_Servo();
+
 }
 
 // ================================================================
@@ -341,9 +349,6 @@ void get_TCS34725ID(void) {
     Serial.println("TCS34725 not responding");
 }
 
-/*
-Reads the register values for clear, red, green, and blue.
-*/
 void get_Colors(void) {
   unsigned int clear_color = 0;
   unsigned int red_color = 0;
@@ -366,7 +371,6 @@ void get_Colors(void) {
   //  Serial.print(green_color, DEC);
   //  Serial.print(" blue color=");
   //  Serial.print(blue_color, DEC);
-
 
   // Basic RGB color differentiation can be accomplished by comparing the values and the largest reading will be
   // the prominent color
@@ -468,7 +472,17 @@ void L6470_setup() {
 
 void Rotate_Stepping() {
   L6470_move(1, 400); //指定方向に指定数ステップする(400で1回転)
-   L6470_move(0, 400); //指定方向に指定数ステップする(400で1回転)
+  L6470_move(0, 400); //指定方向に指定数ステップする(400で1回転)
   // L6470_softhiz(); //回転停止、保持トルクなし
+}
+
+// ================================================================
+// ===                サーボモーター関連                  ===
+// ================================================================
+void Init_Servo() {
+  servo1.attach(8);  //D8ピンをサーボの信号線として設定
+  servo2.attach(7);  //D7ピンをサーボの信号線として設定
+  servo1.write(90); // サーボの角度を設定
+  servo2.write(90); // サーボの角度を設定
 
 }
