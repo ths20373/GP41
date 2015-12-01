@@ -63,7 +63,7 @@ int deg1 = 0;    // サーボの角度
 int deg2 = 0;    // サーボの角度
 
 /* サーボのデバッグ用宣言 */
-//#define DEBUG_SERVO
+#define DEBUG_SERVO
 
 // ================================================================
 // ===                  カラーセンサの宣言関連                  ===
@@ -95,11 +95,16 @@ int pull_power = 0;
 #include <SPI.h>       //SPI通信
 
 // ピン定義
-#define PIN_SPI_MOSI 11   //モータドライバ側の7pin
-#define PIN_SPI_MISO 12   //モータドライバ側の5pin
-#define PIN_SPI_SCK 13    //モータドライバ側の6pin
-#define PIN_SPI_SS 10     //モータドライバ側の8pin
-#define PIN_BUSY 9        //モータドライバ側の1pin
+//3pin_DriverSide GND
+//4pin_DriverSide 5v
+#define PIN_SPI_MOSI 11   //7pin_DriverSide UNO:11,MEGA:51
+#define PIN_SPI_MISO 12   //5pin_DriverSide UNO:12,MEGA:50
+#define PIN_SPI_SCK 13    //6pin_DriverSide UNO:13,MEGA:52
+#define PIN_SPI_SS 10     //8pin_DriverSide UNO:10,MEGA:53
+
+// グローバル変数
+char Toggle1 = 0; //ステッピングモータ正転用トグル
+char Toggle2 = 0; //ステッピングモータ逆転用トグル
 
 // ================================================================
 // ===               INTERRUPT DETECTION ROUTINE                ===
@@ -113,22 +118,19 @@ void dmpDataReady() {
 // ===                      INITIAL SETUP                       ===
 // ================================================================
 void setup() {
-  //カラーセンサのLEDを消す
-  pinMode(Color_Sensor_LED, OUTPUT);     // 出力に設定
-  digitalWrite(Color_Sensor_LED, LOW);   // LEDをオフ
-
+  Serial.begin(115200);
   /* ジャイロセンサ */
-//  Gyro_I2C_SET();
+  Gyro_I2C_SET();
 
   /* カラーセンサ */
-//  init_TCS34725();
-//  get_TCS34725ID();
+  //  init_TCS34725();
+  //  get_TCS34725ID();
 
   /* ステッピングモータ */
   Init_Stepping();
 
   /* サーボモータ */
-//  Init_Servo();
+  Init_Servo();
 
 }
 
@@ -138,13 +140,13 @@ void setup() {
 
 void loop() {
   /* ジャイロセンサの値取得 */
-//  Gyro_I2C_GET();
+  Gyro_I2C_GET();
   /* カラーセンサの値取得 */
-//  get_Colors();
+  //  get_Colors();
   /* 弓をの状態を取得 */
-//  Arrow_Status();
+  //  Arrow_Status();
   /* 取得した値でステッピングモータを動かす */
-  Rotate_Stepping();
+    Rotate_Stepping();
 }
 
 // ================================================================
@@ -165,7 +167,7 @@ void Gyro_I2C_SET() {
   // initialize serial communication
   // (115200 chosen because it is required for Teapot Demo output, but it's
   // really up to you depending on your project)
-  Serial.begin(115200);
+//  Serial.begin(115200);
   while (!Serial); // wait for Leonardo enumeration, others continue immediately
 
   // NOTE: 8MHz or slower host processors, like the Teensy @ 3.3v or Ardunio
@@ -339,6 +341,11 @@ void init_TCS34725(void) {
   Writei2cRegisters(1, ControlAddress); // RGBC gain control
   i2cWriteBuffer[0] = 0x03;
   Writei2cRegisters(1, EnableAddress);   // enable ADs and oscillator for sensor
+
+  //カラーセンサのLEDを消す
+  pinMode(Color_Sensor_LED, OUTPUT);     // 出力に設定
+  digitalWrite(Color_Sensor_LED, LOW);   // LEDをオフ
+
 }
 
 void get_TCS34725ID(void) {
@@ -422,13 +429,12 @@ void Arrow_Status(void) {
 // ===                ステッピングモーター関連                  ===
 // ================================================================
 void Init_Stepping() {
-  Serial.begin(9600);  //シリアル通信開始
+//  Serial.begin(115200);  //シリアル通信開始
   // ピン設定
   pinMode(PIN_SPI_MOSI, OUTPUT);  //SPI通信用ピン
   pinMode(PIN_SPI_MISO, INPUT);   //SPI通信用ピン
   pinMode(PIN_SPI_SCK, OUTPUT);   //SPI通信用ピン
   pinMode(PIN_SPI_SS, OUTPUT);    //SPI通信用ピン
-  pinMode(PIN_BUSY, INPUT);
 
   digitalWrite(PIN_SPI_SS, HIGH); //SPI通信用ピンの一部をHighにする
 
@@ -450,31 +456,51 @@ void Init_Stepping() {
 /* ステッピングモータセットアップ */
 void L6470_setup() {
   //最大回転スピード
-  L6470_send(0x07);//レジスタアドレス
-  L6470_send(0xFF);//値(10bit),デフォルト0x41
-  L6470_send(0x30);
+  L6470_send(0x07);//レジスタアドレス(0x07)
+  L6470_send(0x40);//値(10bit),デフォルト0x41
+  L6470_send(0x00);
   //モータ停止中の電圧設定
-  L6470_send(0x09);//レジスタアドレス
+  L6470_send(0x09);//レジスタアドレス(0x09)
   L6470_send(0x00);//値(8bit),デフォルト0x29
   //モータ定速回転時の電圧設定
-  L6470_send(0x0a);//レジスタアドレス
-  L6470_send(0xA0);//値(8bit),デフォルト0x29
+  L6470_send(0x0a);//レジスタアドレス(0x0a)
+  L6470_send(0xff);//値(8bit),デフォルト0x29
   //加速中の電圧設定
-  L6470_send(0x0b);//レジスタアドレス
-  L6470_send(0x80);//値(8bit),デフォルト0x29
+  L6470_send(0x0b);//レジスタアドレス(0x0b)
+  L6470_send(0xa0);//値(8bit),デフォルト0x29
   //減速中の電圧設定
-  L6470_send(0x0c);//レジスタアドレス
+  L6470_send(0x0c);//レジスタアドレス(0x0c)
   L6470_send(0x60);//値(8bit),デフォルト0x29
   //フ ル ス テ ッ プ,ハ ー フ ス テ ッ プ,1/4, 1/8,…,1/128 ステップの設定
-  L6470_send(0x16);//レジスタアドレス
+  L6470_send(0x16);//レジスタアドレス(0x16)
   L6470_send(0x00);//値(8bit)
+  //失速電流しきい値設定？
+  L6470_send(0x14);// レジスタアドレス
+  L6470_send(0x40);//値(7bit) デフォルト0x40
+}
+
+/* SPI通信でドライバーと通信 */
+void L6470_send(unsigned char add_or_val) {
+  digitalWrite(PIN_SPI_SS, LOW);
+  SPI.transfer(add_or_val); // アドレスもしくはデータ送信。
+  digitalWrite(PIN_SPI_SS, HIGH);
 }
 
 void Rotate_Stepping() {
-   L6470_softhiz(); //回転停止、保持トルクなし
+  /* 正転 */
+  //  L6470_send(0x51);//Run(DIR,SPD),0x51:正転,0x50:逆転　
+  //  L6470_send(0x41);//SPD値(20bit)
+  //  L6470_send(0x00);
+  //  L6470_send(0x20);
+  //  Serial.print("forward\n");
 
-//  L6470_move(1, 10); //指定方向に指定数ステップする(400で1回転)
-  // L6470_softhiz(); //回転停止、保持トルクなし
+  /* 逆回転 */
+  L6470_send(0x50);//Run(DIR,SPD),0x51:正転,0x50:逆転　
+  L6470_send(0x80);//SPD値(20bit)
+  L6470_send(0x20);
+  L6470_send(0x40);
+  Serial.print("arm reverce\n");
+
 }
 
 // ================================================================
