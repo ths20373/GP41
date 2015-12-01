@@ -118,17 +118,17 @@ void setup() {
   digitalWrite(Color_Sensor_LED, LOW);   // LEDをオフ
 
   /* ジャイロセンサ */
-  Gyro_I2C_SET();
+//  Gyro_I2C_SET();
 
   /* カラーセンサ */
-  init_TCS34725();
-  get_TCS34725ID();
+//  init_TCS34725();
+//  get_TCS34725ID();
 
   /* ステッピングモータ */
   Init_Stepping();
 
   /* サーボモータ */
-  Init_Servo();
+//  Init_Servo();
 
 }
 
@@ -138,11 +138,11 @@ void setup() {
 
 void loop() {
   /* ジャイロセンサの値取得 */
-  Gyro_I2C_GET();
+//  Gyro_I2C_GET();
   /* カラーセンサの値取得 */
-  get_Colors();
+//  get_Colors();
   /* 弓をの状態を取得 */
-  Arrow_Status();
+//  Arrow_Status();
   /* 取得した値でステッピングモータを動かす */
   Rotate_Stepping();
 }
@@ -451,28 +451,29 @@ void Init_Stepping() {
 void L6470_setup() {
   //最大回転スピード
   L6470_send(0x07);//レジスタアドレス
-  L6470_send(0x00);//値(10bit),デフォルト0x41
+  L6470_send(0xFF);//値(10bit),デフォルト0x41
   L6470_send(0x30);
   //モータ停止中の電圧設定
   L6470_send(0x09);//レジスタアドレス
-  L6470_send(0x20);//値(8bit),デフォルト0x29
+  L6470_send(0x00);//値(8bit),デフォルト0x29
   //モータ定速回転時の電圧設定
   L6470_send(0x0a);//レジスタアドレス
-  L6470_send(0x40);//値(8bit),デフォルト0x29
+  L6470_send(0xA0);//値(8bit),デフォルト0x29
   //加速中の電圧設定
   L6470_send(0x0b);//レジスタアドレス
-  L6470_send(0x29);//値(8bit),デフォルト0x29
+  L6470_send(0x80);//値(8bit),デフォルト0x29
   //減速中の電圧設定
   L6470_send(0x0c);//レジスタアドレス
-  L6470_send(0x29);//値(8bit),デフォルト0x29
+  L6470_send(0x60);//値(8bit),デフォルト0x29
   //フ ル ス テ ッ プ,ハ ー フ ス テ ッ プ,1/4, 1/8,…,1/128 ステップの設定
   L6470_send(0x16);//レジスタアドレス
   L6470_send(0x00);//値(8bit)
 }
 
 void Rotate_Stepping() {
-  L6470_move(1, 400); //指定方向に指定数ステップする(400で1回転)
-  L6470_move(0, 400); //指定方向に指定数ステップする(400で1回転)
+   L6470_softhiz(); //回転停止、保持トルクなし
+
+//  L6470_move(1, 10); //指定方向に指定数ステップする(400で1回転)
   // L6470_softhiz(); //回転停止、保持トルクなし
 }
 
