@@ -132,8 +132,8 @@ void setup() {
   /* サーボモータ */
   Init_Servo();
 
-  L6470_move(1, 1000);
-  //  L6470_softstop();
+  L6470_move(1, 100);
+//  L6470_softstop();
 }
 
 // ================================================================
@@ -148,7 +148,7 @@ void loop() {
   /* 弓をの状態を取得 */
   Arrow_Status();
   /* 取得した値でステッピングモータを動かす */
-  //  Rotate_Stepping();
+//  Rotate_Stepping();
 }
 
 // ================================================================
@@ -403,27 +403,27 @@ void Arrow_Status(void) {
 
   if (current_color == "green" && prev_color == "red") {
     pull_power += 1;
-    L6470_move(1, 100);
+    L6470_move(1, 10);
     L6470_softstop();
   } else if (current_color == "blue" && prev_color == "red") {
     pull_power -= 1;
-    L6470_move(0, 100);
+    L6470_move(0, 10);
     L6470_softstop();
   } else if (current_color == "blue" && prev_color == "green") {
     pull_power += 1;
-    L6470_move(1, 100);
+    L6470_move(1, 10);
     L6470_softstop();
   } else if (current_color == "red" && prev_color == "green") {
     pull_power -= 1;
-    L6470_move(0, 100);
+    L6470_move(0, 10);
     L6470_softstop();
   } else if (current_color == "red" && prev_color == "blue") {
     pull_power += 1;
-    L6470_move(1, 100);
+    L6470_move(1, 10);
     L6470_softstop();
   } else if (current_color == "green" && prev_color == "blue") {
     pull_power -= 1;
-    L6470_move(0, 100);
+    L6470_move(0, 10);
     L6470_softstop();
   } else if (current_color == "none" && prev_color == "none") {
     pull_power = 0;
@@ -446,7 +446,6 @@ void Arrow_Status(void) {
 // ===                ステッピングモーター関連                  ===
 // ================================================================
 void Init_Stepping() {
-  //  Serial.begin(115200);  //シリアル通信開始
   // ピン設定
   pinMode(PIN_SPI_MOSI, OUTPUT);  //SPI通信用ピン
   pinMode(PIN_SPI_MISO, INPUT);   //SPI通信用ピン
@@ -504,23 +503,7 @@ void L6470_send(unsigned char add_or_val) {
 }
 
 void Rotate_Stepping() {
-  L6470_move(1, 100);
-
-  /* 正転 */
-  //  L6470_send(0x51);//Run(DIR,SPD),0x51:正転,0x50:逆転　
-  //  L6470_send(0x41);//SPD値(20bit)
-  //  L6470_send(0x00);
-  //  L6470_send(0x20);
-
-  //  Serial.print("forward\n");
-
-  /* 逆回転 */
-  //  L6470_send(0x50);//Run(DIR,SPD),0x51:正転,0x50:逆転　
-  //  L6470_send(0x80);//SPD値(20bit)
-  //  L6470_send(0x20);
-  //  L6470_send(0x40);
-  //  Serial.print("arm reverce\n");
-
+//  L6470_move(1, 100);
 }
 
 void L6470_transfer(int add, int bytes, long val) {
@@ -547,7 +530,18 @@ void L6470_move(int dia, long n_step) {
   else
     L6470_transfer(0x40, 3, n_step);
 }
-
+void L6470_resetdevice(){
+  L6470_send_u(0x00);//nop命令
+  L6470_send_u(0x00);
+  L6470_send_u(0x00);
+  L6470_send_u(0x00);
+  L6470_send_u(0xc0);
+}
+void L6470_send_u(unsigned char add_or_val){//busyを確認せず送信するため用
+  digitalWrite(PIN_SPI_SS, LOW); // ~SSイネーブル。
+  SPI.transfer(add_or_val); // アドレスもしくはデータ送信。
+  digitalWrite(PIN_SPI_SS, HIGH); // ~SSディスエーブル。
+}
 // L6470_softstop();　//回転停止、保持トルクあり
 void L6470_softstop() {
   L6470_transfer(0xb0, 0, 0);
@@ -569,7 +563,7 @@ void L6470_hardhiz() {
 // ===                サーボモーター関連                  ===
 // ================================================================
 void Init_Servo() {
-  servo1.attach(8);  //D8ピンをサーボの信号線として設定
+  servo1.attach(3);  //D8ピンをサーボの信号線として設定
   servo2.attach(7);  //D7ピンをサーボの信号線として設定
   servo1.write(90); // サーボの角度を設定
   servo2.write(90); // サーボの角度を設定
