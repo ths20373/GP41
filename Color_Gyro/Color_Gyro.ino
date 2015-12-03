@@ -123,8 +123,8 @@ void setup() {
   Gyro_I2C_SET();
 
   /* カラーセンサ */
-  //  init_TCS34725();
-  //  get_TCS34725ID();
+  init_TCS34725();
+  get_TCS34725ID();
 
   /* ステッピングモータ */
   Init_Stepping();
@@ -132,6 +132,8 @@ void setup() {
   /* サーボモータ */
   Init_Servo();
 
+  L6470_move(1, 1000);
+  //  L6470_softstop();
 }
 
 // ================================================================
@@ -142,11 +144,11 @@ void loop() {
   /* ジャイロセンサの値取得 */
   Gyro_I2C_GET();
   /* カラーセンサの値取得 */
-  //  get_Colors();
+  get_Colors();
   /* 弓をの状態を取得 */
-  //  Arrow_Status();
+  Arrow_Status();
   /* 取得した値でステッピングモータを動かす */
-    Rotate_Stepping();
+  //  Rotate_Stepping();
 }
 
 // ================================================================
@@ -167,7 +169,7 @@ void Gyro_I2C_SET() {
   // initialize serial communication
   // (115200 chosen because it is required for Teapot Demo output, but it's
   // really up to you depending on your project)
-//  Serial.begin(115200);
+  //  Serial.begin(115200);
   while (!Serial); // wait for Leonardo enumeration, others continue immediately
 
   // NOTE: 8MHz or slower host processors, like the Teensy @ 3.3v or Ardunio
@@ -289,7 +291,7 @@ void Gyro_I2C_GET() {
     Serial.print("deg1\t");
     Serial.print(deg1);
     Serial.print("deg2\t");
-    Serial.println(deg2);
+    Serial.print(deg2);
 #endif
   }
 }
@@ -344,7 +346,7 @@ void init_TCS34725(void) {
 
   //カラーセンサのLEDを消す
   pinMode(Color_Sensor_LED, OUTPUT);     // 出力に設定
-  digitalWrite(Color_Sensor_LED, LOW);   // LEDをオフ
+  digitalWrite(Color_Sensor_LED, HIGH);   // LEDをオフ
 
 }
 
@@ -401,23 +403,38 @@ void Arrow_Status(void) {
 
   if (current_color == "green" && prev_color == "red") {
     pull_power += 1;
+    L6470_move(1, 100);
+    L6470_softstop();
   } else if (current_color == "blue" && prev_color == "red") {
     pull_power -= 1;
+    L6470_move(0, 100);
+    L6470_softstop();
   } else if (current_color == "blue" && prev_color == "green") {
     pull_power += 1;
+    L6470_move(1, 100);
+    L6470_softstop();
   } else if (current_color == "red" && prev_color == "green") {
     pull_power -= 1;
+    L6470_move(0, 100);
+    L6470_softstop();
   } else if (current_color == "red" && prev_color == "blue") {
     pull_power += 1;
+    L6470_move(1, 100);
+    L6470_softstop();
   } else if (current_color == "green" && prev_color == "blue") {
     pull_power -= 1;
+    L6470_move(0, 100);
+    L6470_softstop();
   } else if (current_color == "none" && prev_color == "none") {
     pull_power = 0;
+    L6470_softhiz();
   }
 
   if (pull_power < 0) {
     pull_power = 0;
   }
+
+  Serial.print("\t");
   Serial.print("color : ");
   Serial.print(current_color);
   Serial.print("\t");
@@ -429,7 +446,7 @@ void Arrow_Status(void) {
 // ===                ステッピングモーター関連                  ===
 // ================================================================
 void Init_Stepping() {
-//  Serial.begin(115200);  //シリアル通信開始
+  //  Serial.begin(115200);  //シリアル通信開始
   // ピン設定
   pinMode(PIN_SPI_MOSI, OUTPUT);  //SPI通信用ピン
   pinMode(PIN_SPI_MISO, INPUT);   //SPI通信用ピン
@@ -487,20 +504,65 @@ void L6470_send(unsigned char add_or_val) {
 }
 
 void Rotate_Stepping() {
+  L6470_move(1, 100);
+
   /* 正転 */
   //  L6470_send(0x51);//Run(DIR,SPD),0x51:正転,0x50:逆転　
   //  L6470_send(0x41);//SPD値(20bit)
   //  L6470_send(0x00);
   //  L6470_send(0x20);
+
   //  Serial.print("forward\n");
 
   /* 逆回転 */
-  L6470_send(0x50);//Run(DIR,SPD),0x51:正転,0x50:逆転　
-  L6470_send(0x80);//SPD値(20bit)
-  L6470_send(0x20);
-  L6470_send(0x40);
-  Serial.print("arm reverce\n");
+  //  L6470_send(0x50);//Run(DIR,SPD),0x51:正転,0x50:逆転　
+  //  L6470_send(0x80);//SPD値(20bit)
+  //  L6470_send(0x20);
+  //  L6470_send(0x40);
+  //  Serial.print("arm reverce\n");
 
+}
+
+void L6470_transfer(int add, int bytes, long val) {
+  int data[3];
+  L6470_send(add);
+  for (int i = 0; i <= bytes - 1; i++) {
+    data[i] = val & 0xff;
+    val = val >> 8;
+  }
+  if (bytes == 3) {
+    L6470_send(data[2]);
+  }
+  if (bytes >= 2) {
+    L6470_send(data[1]);
+  }
+  if (bytes >= 1) {
+    L6470_send(data[0]);
+  }
+}
+
+void L6470_move(int dia, long n_step) {
+  if (dia == 1)
+    L6470_transfer(0x41, 3, n_step);
+  else
+    L6470_transfer(0x40, 3, n_step);
+}
+
+// L6470_softstop();　//回転停止、保持トルクあり
+void L6470_softstop() {
+  L6470_transfer(0xb0, 0, 0);
+}
+// L6470_hardstop();　//回転急停止、保持トルクあり
+void L6470_hardstop() {
+  L6470_transfer(0xb8, 0, 0);
+}
+// L6470_softhiz(); //回転停止、保持トルクなし
+void L6470_softhiz() {
+  L6470_transfer(0xa0, 0, 0);
+}
+// L6470_hardhiz(); //回転急停止、保持トルクなし
+void L6470_hardhiz() {
+  L6470_transfer(0xa8, 0, 0);
 }
 
 // ================================================================
@@ -511,5 +573,4 @@ void Init_Servo() {
   servo2.attach(7);  //D7ピンをサーボの信号線として設定
   servo1.write(90); // サーボの角度を設定
   servo2.write(90); // サーボの角度を設定
-
 }
