@@ -52,15 +52,19 @@ uint8_t teapotPacket[14] = { '$', 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0x00, 0x00, '\r'
 // ===                    サーボの宣言関連                      ===
 // ================================================================
 #include <Servo.h>
-Servo servo1;        //MEGA:D22,UNO:D9 Servoオブジェクトを作成
-Servo servo2;        //MEGA:D22,UNO:D10 Servoオブジェクトを作成
+Servo servo1;  //加速度ジャイロと組み合わせて発射機構の上下を決める
+Servo servo2;  //加速度ジャイロと組み合わせて発射機構の上下を決める
+Servo servo3;  //加速度ジャイロと組み合わせて発射機構の上下を決める
+Servo servo4;  //加速度ジャイロと組み合わせて発射機構の上下を決める
+Servo servo5;  //加速度ジャイロと組み合わせて発射機構の上下を決める（５個目は使わないかもしれない）
+Servo servo6;  //発射の際のステッピングモータを動かすためのトルクの高いサーボ
 
 //グローバル関数の宣言
 char input[4];  // 文字列格納用
 int i = 0;      // 文字数のカウンタ
 int val = 0;    // 受信した数値
-int deg1 = 0;    // サーボの角度
-int deg2 = 0;    // サーボの角度
+int deg1 = 0;    // サーボ1の角度
+int deg2 = 0;    // サーボ2の角度
 
 /* サーボのデバッグ用宣言 */
 #define DEBUG_SERVO
@@ -102,9 +106,10 @@ int pull_power = 0;
 #define PIN_SPI_SCK 13    //6pin_DriverSide UNO:13,MEGA:52
 #define PIN_SPI_SS 10     //8pin_DriverSide UNO:10,MEGA:53
 
-// グローバル変数
-char Toggle1 = 0; //ステッピングモータ正転用トグル
-char Toggle2 = 0; //ステッピングモータ逆転用トグル
+// ================================================================
+// ===          シリアルに出すデバッグ作用のデファイン          ===
+// ================================================================
+#define SERIAL_DEBUG
 
 // ================================================================
 // ===               INTERRUPT DETECTION ROUTINE                ===
@@ -274,7 +279,6 @@ void Gyro_I2C_GET() {
     Serial.print(ypr[2] * 180 / M_PI);
     Serial.print("\t");
 
-#ifdef DEBUG_SERVO
     deg1 = ypr[0] * 180 / M_PI;   //センサの値を取得
     deg2 = ypr[2] * 180 / M_PI;   //センサの値を取得
     deg1 = int(deg1);   //小数点切り捨て
@@ -287,7 +291,6 @@ void Gyro_I2C_GET() {
     Serial.print(deg1);
     Serial.print("deg2\t");
     Serial.print(deg2);
-#endif
   }
 }
 
@@ -364,17 +367,6 @@ void get_Colors(void) {
   green_color = (unsigned int)(i2cReadBuffer[5] << 8) + (unsigned int)i2cReadBuffer[4];
   blue_color = (unsigned int)(i2cReadBuffer[7] << 8) + (unsigned int)i2cReadBuffer[6];
 
-  // send register values to the serial monitor
-
-  //  Serial.print("clear color=");
-  //  Serial.print(clear_color, DEC);
-  //  Serial.print(" red color=");
-  //  Serial.print(red_color, DEC);
-  //  Serial.print(" green color=");
-  //  Serial.print(green_color, DEC);
-  //  Serial.print(" blue color=");
-  //  Serial.print(blue_color, DEC);
-
   // Basic RGB color differentiation can be accomplished by comparing the values and the largest reading will be
   // the prominent color
 
@@ -416,9 +408,10 @@ void Arrow_Status(void) {
   } else if (current_color == "none" && prev_color == "none") {
     pull_power = 0;
     L6470_softhiz();
-    Launch_Arrow();
+    Launch_Arrow();   //矢の発射
   }
 
+  /* 誤って引く力がマイナスにならないように調整 */
   if (pull_power < 0) {
     pull_power = 0;
   }
@@ -533,11 +526,13 @@ void L6470_resetdevice() {
   L6470_send_u(0x00);
   L6470_send_u(0xc0);
 }
+
 void L6470_send_u(unsigned char add_or_val) { //busyを確認せず送信するため用
   digitalWrite(PIN_SPI_SS, LOW); // ~SSイネーブル。
   SPI.transfer(add_or_val); // アドレスもしくはデータ送信。
   digitalWrite(PIN_SPI_SS, HIGH); // ~SSディスエーブル。
 }
+
 // L6470_softstop();　//回転停止、保持トルクあり
 void L6470_softstop() {
   L6470_transfer(0xb0, 0, 0);
@@ -556,11 +551,15 @@ void L6470_hardhiz() {
 }
 
 // ================================================================
-// ===                サーボモーター関連                  ===
+// ===                   サーボモーター関連                     ===
 // ================================================================
 void Init_Servo() {
   servo1.attach(8);  //D8ピンをサーボの信号線として設定
   servo2.attach(7);  //D7ピンをサーボの信号線として設定
+  servo3.attach(6);  //D8ピンをサーボの信号線として設定
+  servo4.attach(5);  //D7ピンをサーボの信号線として設定
+  servo5.attach(4);  //D8ピンをサーボの信号線として設定
+  servo6.attach(3);  //D8ピンをサーボの信号線として設定
   servo1.write(90); // サーボの角度を設定
   servo2.write(90); // サーボの角度を設定
 }
