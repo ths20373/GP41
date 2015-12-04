@@ -131,9 +131,6 @@ void setup() {
 
   /* サーボモータ */
   Init_Servo();
-
-  L6470_move(1, 100);
-//  L6470_softstop();
 }
 
 // ================================================================
@@ -147,8 +144,6 @@ void loop() {
   get_Colors();
   /* 弓をの状態を取得 */
   Arrow_Status();
-  /* 取得した値でステッピングモータを動かす */
-//  Rotate_Stepping();
 }
 
 // ================================================================
@@ -346,8 +341,7 @@ void init_TCS34725(void) {
 
   //カラーセンサのLEDを消す
   pinMode(Color_Sensor_LED, OUTPUT);     // 出力に設定
-  digitalWrite(Color_Sensor_LED, HIGH);   // LEDをオフ
-
+  digitalWrite(Color_Sensor_LED, LOW);   // LEDをオフ
 }
 
 void get_TCS34725ID(void) {
@@ -403,31 +397,26 @@ void Arrow_Status(void) {
 
   if (current_color == "green" && prev_color == "red") {
     pull_power += 1;
-    L6470_move(1, 10);
-    L6470_softstop();
+    Rotate_Stepping();
   } else if (current_color == "blue" && prev_color == "red") {
     pull_power -= 1;
-    L6470_move(0, 10);
-    L6470_softstop();
+    Reverse_Stepping();
   } else if (current_color == "blue" && prev_color == "green") {
     pull_power += 1;
-    L6470_move(1, 10);
-    L6470_softstop();
+    Rotate_Stepping();
   } else if (current_color == "red" && prev_color == "green") {
     pull_power -= 1;
-    L6470_move(0, 10);
-    L6470_softstop();
+    Reverse_Stepping();
   } else if (current_color == "red" && prev_color == "blue") {
     pull_power += 1;
-    L6470_move(1, 10);
-    L6470_softstop();
+    Rotate_Stepping();
   } else if (current_color == "green" && prev_color == "blue") {
     pull_power -= 1;
-    L6470_move(0, 10);
-    L6470_softstop();
+    Reverse_Stepping();
   } else if (current_color == "none" && prev_color == "none") {
     pull_power = 0;
     L6470_softhiz();
+    Launch_Arrow();
   }
 
   if (pull_power < 0) {
@@ -441,6 +430,9 @@ void Arrow_Status(void) {
   Serial.print("pull_power : ");
   Serial.print("\t");
   Serial.println(pull_power);
+}
+
+void Launch_Arrow() {
 }
 // ================================================================
 // ===                ステッピングモーター関連                  ===
@@ -503,7 +495,11 @@ void L6470_send(unsigned char add_or_val) {
 }
 
 void Rotate_Stepping() {
-//  L6470_move(1, 100);
+  L6470_move(1, 20);
+}
+
+void Reverse_Stepping() {
+  L6470_move(0, 20);
 }
 
 void L6470_transfer(int add, int bytes, long val) {
@@ -530,14 +526,14 @@ void L6470_move(int dia, long n_step) {
   else
     L6470_transfer(0x40, 3, n_step);
 }
-void L6470_resetdevice(){
+void L6470_resetdevice() {
   L6470_send_u(0x00);//nop命令
   L6470_send_u(0x00);
   L6470_send_u(0x00);
   L6470_send_u(0x00);
   L6470_send_u(0xc0);
 }
-void L6470_send_u(unsigned char add_or_val){//busyを確認せず送信するため用
+void L6470_send_u(unsigned char add_or_val) { //busyを確認せず送信するため用
   digitalWrite(PIN_SPI_SS, LOW); // ~SSイネーブル。
   SPI.transfer(add_or_val); // アドレスもしくはデータ送信。
   digitalWrite(PIN_SPI_SS, HIGH); // ~SSディスエーブル。
@@ -563,7 +559,7 @@ void L6470_hardhiz() {
 // ===                サーボモーター関連                  ===
 // ================================================================
 void Init_Servo() {
-  servo1.attach(3);  //D8ピンをサーボの信号線として設定
+  servo1.attach(8);  //D8ピンをサーボの信号線として設定
   servo2.attach(7);  //D7ピンをサーボの信号線として設定
   servo1.write(90); // サーボの角度を設定
   servo2.write(90); // サーボの角度を設定
