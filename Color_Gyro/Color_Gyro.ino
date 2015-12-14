@@ -91,7 +91,7 @@ String current_color = "none";
 String prev_color = "none";
 int pull_power = 0;
 
-#define Color_Sensor_LED 3   //モータドライバ側の7pin
+#define Color_Sensor_LED 4   //モータドライバ側の7pin
 
 // ================================================================
 // ===              ステッピングモータの宣言関連                ===
@@ -488,11 +488,11 @@ void L6470_send(unsigned char add_or_val) {
 }
 
 void Rotate_Stepping() {
-  L6470_move(1, 20);
+  L6470_move(0, 30);
 }
 
 void Reverse_Stepping() {
-  L6470_move(0, 20);
+  L6470_move(1, 30);
 }
 
 void L6470_transfer(int add, int bytes, long val) {
