@@ -49,11 +49,11 @@ float ypr[3];           // [yaw, pitch, roll]   yaw/pitch/roll container and gra
 // ===                    サーボの宣言関連                      ===
 // ================================================================
 #include <Servo.h>
-Servo servo1;  //加速度ジャイロと組み合わせて発射機構の上下を決める
-Servo servo2;  //加速度ジャイロと組み合わせて発射機構の上下を決める
-Servo servo3;  //加速度ジャイロと組み合わせて発射機構の上下を決める
-Servo servo4;  //加速度ジャイロと組み合わせて発射機構の上下を決める
-Servo servo5;  //加速度ジャイロと組み合わせて発射機構の上下を決める（５個目は使わないかもしれない）
+Servo Yaw_Servo1;    //加速度ジャイロと組み合わせて発射機構の左右を決める
+Servo Yaw_Servo2;    //加速度ジャイロと組み合わせて発射機構の左右を決める
+Servo Pitch_Servo1;  //加速度ジャイロと組み合わせて発射機構の上下を決める
+Servo Pitch_Servo2;  //加速度ジャイロと組み合わせて発射機構の上下を決める
+Servo Launch_Servo;  //加速度ジャイロと組み合わせて発射機構の上下を決める（５個目は使わないかもしれない）
 Servo servo6;  //発射の際のステッピングモータを動かすためのトルクの高いサーボ
 
 //グローバル関数の宣言
@@ -282,8 +282,8 @@ void Gyro_I2C_GET() {
     deg1 += 90; //サーボ1の初期位置を180度にする
     deg2 = int(deg2);   //小数点切り捨て
     deg2 += 90; //サーボ2の初期位置を180度にする
-    servo1.write(deg1); // サーボの角度を設定
-    servo2.write(deg2); // サーボの角度を設定
+    Yaw_Servo1.write(deg1); // サーボの角度を設定
+    Yaw_Servo2.write(deg2); // サーボの角度を設定
     Serial.print("deg1\t");
     Serial.print(deg1);
     Serial.print("deg2\t");
@@ -340,8 +340,8 @@ void init_TCS34725(void) {
   Writei2cRegisters(1, EnableAddress);   // enable ADs and oscillator for sensor
 
   //カラーセンサのLEDを消す
-  pinMode(Color_Sensor_LED, OUTPUT);     // 出力に設定
-  digitalWrite(Color_Sensor_LED, LOW);   // LEDをオフ
+  //  pinMode(Color_Sensor_LED, OUTPUT);     // 出力に設定
+  //  digitalWrite(Color_Sensor_LED, LOW);   // LEDをオフ
 }
 
 void get_TCS34725ID(void) {
@@ -424,6 +424,7 @@ void Arrow_Status(void) {
 
 void Launch_Arrow() {
 }
+
 // ================================================================
 // ===                ステッピングモーター関連                  ===
 // ================================================================
@@ -551,12 +552,17 @@ void L6470_hardhiz() {
 // ===                   サーボモーター関連                     ===
 // ================================================================
 void Init_Servo() {
-  servo1.attach(8);  //D8ピンをサーボの信号線として設定
-  servo2.attach(7);  //D7ピンをサーボの信号線として設定
-  servo3.attach(6);  //D8ピンをサーボの信号線として設定
-  servo4.attach(5);  //D7ピンをサーボの信号線として設定
-  servo5.attach(4);  //D8ピンをサーボの信号線として設定
-  servo6.attach(3);  //D8ピンをサーボの信号線として設定
-  servo1.write(90); // サーボの角度を設定
-  servo2.write(90); // サーボの角度を設定
+  /* 初期のピン設定 */
+  Yaw_Servo1.attach(8);    //D8ピンをサーボの信号線として設定
+  Yaw_Servo2.attach(7);    //D7ピンをサーボの信号線として設定
+  Pitch_Servo1.attach(6);  //D6ピンをサーボの信号線として設定
+  Pitch_Servo2.attach(5);  //D5ピンをサーボの信号線として設定
+  Launch_Servo.attach(4);  //D4ピンをサーボの信号線として設定
+  servo6.attach(3);        //D3ピンをサーボの信号線として設定
+
+  /* 初期のサーボの角度指定 */
+  Yaw_Servo1.write(90);   // サーボの角度を設定
+  Yaw_Servo2.write(90);   // サーボの角度を設定
+  Pitch_Servo1.write(90); // サーボの角度を設定
+  Pitch_Servo2.write(90); // サーボの角度を設定
 }
