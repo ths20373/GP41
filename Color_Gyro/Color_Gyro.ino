@@ -49,10 +49,8 @@ float ypr[3];           // [yaw, pitch, roll]   yaw/pitch/roll container and gra
 // ===                    サーボの宣言関連                      ===
 // ================================================================
 #include <Servo.h>
-Servo Yaw_Servo1;    //加速度ジャイロと組み合わせて発射機構の左右を決める
-Servo Yaw_Servo2;    //加速度ジャイロと組み合わせて発射機構の左右を決める
-Servo Pitch_Servo1;  //加速度ジャイロと組み合わせて発射機構の上下を決める
-Servo Pitch_Servo2;  //加速度ジャイロと組み合わせて発射機構の上下を決める
+Servo Yaw_Servo;    //加速度ジャイロと組み合わせて発射機構の左右を決める
+Servo Pitch_Servo;  //加速度ジャイロと組み合わせて発射機構の上下を決める
 Servo Launch_Servo;  //加速度ジャイロと組み合わせて発射機構の上下を決める（５個目は使わないかもしれない）
 Servo servo6;  //発射の際のステッピングモータを動かすためのトルクの高いサーボ
 
@@ -103,6 +101,8 @@ int pull_power = 0;
 #define PIN_SPI_SCK 13    //6pin_DriverSide UNO:13,MEGA:52
 #define PIN_SPI_SS 10     //8pin_DriverSide UNO:10,MEGA:53
 
+boolean launch_status = false;
+
 // ================================================================
 // ===          シリアルに出すデバッグ作用のデファイン          ===
 // ================================================================
@@ -130,6 +130,7 @@ void setup() {
 
   /* ステッピングモータ */
   Init_Stepping();
+  L6470_gohome();
 
   /* サーボモータ */
   Init_Servo();
@@ -141,7 +142,7 @@ void setup() {
 
 void loop() {
   /* ジャイロセンサの値取得 */
-  Gyro_I2C_GET();
+  //  Gyro_I2C_GET();
   /* カラーセンサの値取得 */
   get_Colors();
   /* 弓をの状態を取得 */
@@ -282,12 +283,12 @@ void Gyro_I2C_GET() {
     deg1 += 90; //サーボ1の初期位置を180度にする
     deg2 = int(deg2);   //小数点切り捨て
     deg2 += 90; //サーボ2の初期位置を180度にする
-    Yaw_Servo1.write(deg1); // サーボの角度を設定
-    Yaw_Servo2.write(deg2); // サーボの角度を設定
+    Yaw_Servo.write(deg1); // サーボの角度を設定
+    Pitch_Servo.write(deg2); // サーボの角度を設定
     Serial.print("deg1\t");
     Serial.print(deg1);
     Serial.print("deg2\t");
-    Serial.print(deg2);
+    Serial.println(deg2);
   }
 }
 
@@ -384,6 +385,11 @@ void Arrow_Status(void) {
   prev_color = current_color;
   current_color = arrow_color;
 
+  /* 発射状態がtrueだったら抜ける */
+  if (launch_status) {
+    return;
+  }
+
   if (current_color == "green" && prev_color == "red") {
     pull_power += 1;
     Rotate_Stepping();
@@ -402,10 +408,17 @@ void Arrow_Status(void) {
   } else if (current_color == "green" && prev_color == "blue") {
     pull_power -= 1;
     Reverse_Stepping();
+  } else if (current_color == "none" && prev_color == "red") {
+    pull_power = 0;
+    Launch_Arrow();   //矢の発射
+  } else if (current_color == "none" && prev_color == "green") {
+    pull_power = 0;
+    Launch_Arrow();   //矢の発射
+  } else if (current_color == "none" && prev_color == "blue") {
+    pull_power = 0;
+    Launch_Arrow();   //矢の発射
   } else if (current_color == "none" && prev_color == "none") {
     pull_power = 0;
-    L6470_softhiz();
-    Launch_Arrow();   //矢の発射
   }
 
   /* 誤って引く力がマイナスにならないように調整 */
@@ -423,6 +436,21 @@ void Arrow_Status(void) {
 }
 
 void Launch_Arrow() {
+  /* 発射処理中はステッピングが動かないようにステータスを変更 */
+  launch_status = true;
+
+  /* 発射用のサーボを回転させてトリガーを外す */
+  Launch_Servo.write(0);
+
+  /* 威力調節用のステッピングを初期位置に戻す */
+  L6470_gohome();
+  delay(10000);
+
+  /* 発射用のサーボをトリガーに引っ掛けるように回転させる */
+  Launch_Servo.write(90);
+
+  /* 発射処理中はステッピングが動かないようにステータスを変更 */
+  launch_status = false;
 }
 
 // ================================================================
@@ -517,6 +545,18 @@ void L6470_move(int dia, long n_step) {
   else
     L6470_transfer(0x40, 3, n_step);
 }
+
+void L6470_run(int dia, long spd) {
+  if (dia == 1)
+    L6470_transfer(0x51, 3, spd);
+  else
+    L6470_transfer(0x50, 3, spd);
+}
+
+void L6470_gohome() {
+  L6470_transfer(0x70, 0, 0);
+}
+
 void L6470_resetdevice() {
   L6470_send_u(0x00);//nop命令
   L6470_send_u(0x00);
@@ -548,21 +588,46 @@ void L6470_hardhiz() {
   L6470_transfer(0xa8, 0, 0);
 }
 
+/*L6470 コントロール　コマンド
+ 引数-----------------------
+ dia   1:正転 0:逆転,
+ spd  (20bit)(0.015*spd[step/s])
+ pos  (22bit)
+ n_step (22bit)
+ act   1:絶対座標をマーク  0:絶対座標リセット
+ mssec ミリ秒
+ val 各レジスタに書き込む値
+ ---------------------------
+ L6470_run(dia,spd); //指定方向に連続回転
+ L6470_stepclock(dia); //指定方向にstepピンのクロックで回転
+ L6470_move(dia,n_step); //指定方向に指定数ステップする
+ L6470_goto(pos);　//指定座標に最短でいける回転方向で移動
+ L6470_gotodia(dia,pos);　//回転方向を指定して指定座標に移動
+ L6470_gountil(act,dia,spd);　//指定した回転方向に指定した速度で回転し、スイッチのONで急停止と座標処理
+ L6470_relesesw(act,dia);　//スイッチがOFFに戻るまで最低速度で回転し、停止と座標処理
+ L6470_gohome();　//座標原点に移動
+ L6470_gomark();　//マーク座標に移動
+ L6470_resetpos();　//絶対座標リセット
+ L6470_resetdevice(); //L6470リセット
+ L6470_softstop();　//回転停止、保持トルクあり
+ L6470_hardstop();　//回転急停止、保持トルクあり
+ L6470_softhiz(); //回転停止、保持トルクなし
+ L6470_hardhiz(); //回転急停止、保持トルクなし
+ L6470_getstatus(); //statusレジスタの値を返す （L6470_getparam_status();と同じ）
+*/
+
 // ================================================================
 // ===                   サーボモーター関連                     ===
 // ================================================================
 void Init_Servo() {
   /* 初期のピン設定 */
-  Yaw_Servo1.attach(8);    //D8ピンをサーボの信号線として設定
-  Yaw_Servo2.attach(7);    //D7ピンをサーボの信号線として設定
-  Pitch_Servo1.attach(6);  //D6ピンをサーボの信号線として設定
-  Pitch_Servo2.attach(5);  //D5ピンをサーボの信号線として設定
-  Launch_Servo.attach(4);  //D4ピンをサーボの信号線として設定
+  Yaw_Servo.attach(7);    //D8ピンをサーボの信号線として設定
+  Pitch_Servo.attach(6);  //D6ピンをサーボの信号線として設定
+  Launch_Servo.attach(5);  //D4ピンをサーボの信号線として設定
   servo6.attach(3);        //D3ピンをサーボの信号線として設定
 
   /* 初期のサーボの角度指定 */
-  Yaw_Servo1.write(90);   // サーボの角度を設定
-  Yaw_Servo2.write(90);   // サーボの角度を設定
-  Pitch_Servo1.write(90); // サーボの角度を設定
-  Pitch_Servo2.write(90); // サーボの角度を設定
+  Yaw_Servo.write(90);   // サーボの角度を設定
+  Pitch_Servo.write(90); // サーボの角度を設定
+  Launch_Servo.write(180);  //D4ピンをサーボの信号線として設定
 }
