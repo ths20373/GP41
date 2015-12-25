@@ -15,7 +15,7 @@
 #endif
 
 // class default I2C address is 0x68
-// specific I2C addresses may be passed as a parameter here
+// specific I2C addresses may be p  assed as a parameter here
 // AD0 low = 0x68 (default for SparkFun breakout and InvenSense evaluation board)
 // AD0 high = 0x69
 MPU6050 mpu;
@@ -48,11 +48,12 @@ float ypr[3];           // [yaw, pitch, roll]   yaw/pitch/roll container and gra
 // ================================================================
 // ===                    サーボの宣言関連                      ===
 // ================================================================
-#include <Servo.h>
-Servo Yaw_Servo;    //加速度ジャイロと組み合わせて発射機構の左右を決める
-Servo Pitch_Servo;  //加速度ジャイロと組み合わせて発射機構の上下を決める
-Servo Launch_Servo;  //加速度ジャイロと組み合わせて発射機構の上下を決める（５個目は使わないかもしれない）
-Servo servo6;  //発射の際のステッピングモータを動かすためのトルクの高いサーボ
+//#include <Servo.h>
+#include "VarSpeedServo.h"    //速度調節用のサーボライブラリ
+VarSpeedServo Yaw_Servo;    //加速度ジャイロと組み合わせて発射機構の左右を決める
+VarSpeedServo Pitch_Servo;  //加速度ジャイロと組み合わせて発射機構の上下を決める
+VarSpeedServo Launch_Servo; //加速度ジャイロと組み合わせて発射機構の上下を決める（５個目は使わないかもしれない）
+VarSpeedServo servo6;  //発射の際のステッピングモータを動かすためのトルクの高いサーボ
 
 //グローバル関数の宣言
 char input[4];  // 文字列格納用
@@ -133,7 +134,7 @@ void setup() {
   L6470_gohome();
 
   /* サーボモータ */
-  Init_Servo();
+//    Init_Servo();
 }
 
 // ================================================================
@@ -142,7 +143,7 @@ void setup() {
 
 void loop() {
   /* ジャイロセンサの値取得 */
-  //  Gyro_I2C_GET();
+//  Gyro_I2C_GET();
   /* カラーセンサの値取得 */
   get_Colors();
   /* 弓をの状態を取得 */
@@ -190,10 +191,10 @@ void Gyro_I2C_SET() {
 
   // supply your own gyro offsets here, scaled for min sensitivity
   /* 毎回動作させる前に専用のスケッチでオフセットを求める必要がある */
-  mpu.setXGyroOffset(79);
-  mpu.setYGyroOffset(-102);
-  mpu.setZGyroOffset(62);
-  mpu.setZAccelOffset(1966); // 1688 factory default for my test chip
+  mpu.setXGyroOffset(91);
+  mpu.setYGyroOffset(-37);
+  mpu.setZGyroOffset(4);
+  mpu.setZAccelOffset(1482); // 1688 factory default for my test chip
 
   // make sure it worked (returns 0 if so)
   if (devStatus == 0) {
@@ -283,8 +284,8 @@ void Gyro_I2C_GET() {
     deg1 += 90; //サーボ1の初期位置を180度にする
     deg2 = int(deg2);   //小数点切り捨て
     deg2 += 90; //サーボ2の初期位置を180度にする
-    Yaw_Servo.write(deg1); // サーボの角度を設定
-    Pitch_Servo.write(deg2); // サーボの角度を設定
+    Yaw_Servo.write(deg2/10, 5, false); // サーボの角度を設定
+    Pitch_Servo.write(deg1/10, 5, false); // サーボの角度を設定
     Serial.print("deg1\t");
     Serial.print(deg1);
     Serial.print("deg2\t");
@@ -410,13 +411,13 @@ void Arrow_Status(void) {
     Reverse_Stepping();
   } else if (current_color == "none" && prev_color == "red") {
     pull_power = 0;
-    Launch_Arrow();   //矢の発射
+//    Launch_Arrow();   //矢の発射
   } else if (current_color == "none" && prev_color == "green") {
     pull_power = 0;
-    Launch_Arrow();   //矢の発射
+//    Launch_Arrow();   //矢の発射
   } else if (current_color == "none" && prev_color == "blue") {
     pull_power = 0;
-    Launch_Arrow();   //矢の発射
+//    Launch_Arrow();   //矢の発射
   } else if (current_color == "none" && prev_color == "none") {
     pull_power = 0;
   }
@@ -440,14 +441,14 @@ void Launch_Arrow() {
   launch_status = true;
 
   /* 発射用のサーボを回転させてトリガーを外す */
-  Launch_Servo.write(0);
+  Launch_Servo.write(135, 0, true);
 
   /* 威力調節用のステッピングを初期位置に戻す */
   L6470_gohome();
   delay(10000);
 
   /* 発射用のサーボをトリガーに引っ掛けるように回転させる */
-  Launch_Servo.write(90);
+  Launch_Servo.write(90, 10, true);
 
   /* 発射処理中はステッピングが動かないようにステータスを変更 */
   launch_status = false;
@@ -624,10 +625,9 @@ void Init_Servo() {
   Yaw_Servo.attach(7);    //D8ピンをサーボの信号線として設定
   Pitch_Servo.attach(6);  //D6ピンをサーボの信号線として設定
   Launch_Servo.attach(5);  //D4ピンをサーボの信号線として設定
-  servo6.attach(3);        //D3ピンをサーボの信号線として設定
 
   /* 初期のサーボの角度指定 */
-  Yaw_Servo.write(90);   // サーボの角度を設定
-  Pitch_Servo.write(90); // サーボの角度を設定
-  Launch_Servo.write(180);  //D4ピンをサーボの信号線として設定
+    Yaw_Servo.write(110,5,false);   // サーボの角度を設定
+    Pitch_Servo.write(180, 5, false); // サーボの角度を設定
+  //  Launch_Servo.write(180);  //D4ピンをサーボの信号線として設定
 }
