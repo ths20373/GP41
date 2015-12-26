@@ -62,9 +62,6 @@ int val = 0;    // 受信した数値
 int deg1 = 0;    // サーボ1の角度
 int deg2 = 0;    // サーボ2の角度
 
-/* サーボのデバッグ用宣言 */
-#define DEBUG_SERVO
-
 // ================================================================
 // ===                  カラーセンサの宣言関連                  ===
 // ================================================================
@@ -107,7 +104,26 @@ boolean launch_status = false;
 // ================================================================
 // ===          シリアルに出すデバッグ作用のデファイン          ===
 // ================================================================
-#define SERIAL_DEBUG
+//#define SERIAL_DEBUG
+
+// ================================================================
+// ===                      的の宣言関連                        ===
+// ================================================================
+//グローバル変数
+int val22 = 0;     // 読み取った値を保持する変数
+int val23 = 0;
+int val24 = 0;
+int val25 = 0;
+int val26 = 0;
+int val27 = 0;
+int val28 = 0;
+int val29 = 0;
+int val30 = 0;
+int val31 = 0;
+int val32 = 0;
+int val33 = 0;
+int val34 = 0;
+int flag = 1;
 
 // ================================================================
 // ===               INTERRUPT DETECTION ROUTINE                ===
@@ -121,7 +137,7 @@ void dmpDataReady() {
 // ===                      INITIAL SETUP                       ===
 // ================================================================
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(9600);
   /* ジャイロセンサ */
   Gyro_I2C_SET();
 
@@ -129,12 +145,12 @@ void setup() {
   init_TCS34725();
   get_TCS34725ID();
 
-  /* ステッピングモータ */
-  Init_Stepping();
-  L6470_gohome();
+  /* ステッピングモータ(使わなくなったので消してもいいかも) */
+  //  Init_Stepping();
+  //  L6470_gohome();
 
   /* サーボモータ */
-//    Init_Servo();
+  Init_Servo();
 }
 
 // ================================================================
@@ -143,7 +159,7 @@ void setup() {
 
 void loop() {
   /* ジャイロセンサの値取得 */
-//  Gyro_I2C_GET();
+  Gyro_I2C_GET();
   /* カラーセンサの値取得 */
   get_Colors();
   /* 弓をの状態を取得 */
@@ -178,15 +194,21 @@ void Gyro_I2C_SET() {
   // crystal solution for the UART timer.
 
   // initialize device
+#ifdef SERIAL_DEBUG
   Serial.println(F("Initializing I2C devices..."));
+#endif
   mpu.initialize();
 
   // verify connection
+#ifdef SERIAL_DEBUG
   Serial.println(F("Testing device connections..."));
   Serial.println(mpu.testConnection() ? F("MPU6050 connection successful") : F("MPU6050 connection failed"));
+#endif
 
   // load and configure the DMP
+#ifdef SERIAL_DEBUG
   Serial.println(F("Initializing DMP..."));
+#endif
   devStatus = mpu.dmpInitialize();
 
   // supply your own gyro offsets here, scaled for min sensitivity
@@ -199,16 +221,22 @@ void Gyro_I2C_SET() {
   // make sure it worked (returns 0 if so)
   if (devStatus == 0) {
     // turn on the DMP, now that it's ready
+#ifdef SERIAL_DEBUG
     Serial.println(F("Enabling DMP..."));
+#endif
     mpu.setDMPEnabled(true);
 
     // enable Arduino interrupt detection
+#ifdef SERIAL_DEBUG
     Serial.println(F("Enabling interrupt detection (Arduino external interrupt 0)..."));
+#endif
     attachInterrupt(0, dmpDataReady, RISING);
     mpuIntStatus = mpu.getIntStatus();
 
     // set our DMP Ready flag so the main loop() function knows it's okay to use it
+#ifdef SERIAL_DEBUG
     Serial.println(F("DMP ready! Waiting for first interrupt..."));
+#endif
     dmpReady = true;
 
     // get expected DMP packet size for later comparison
@@ -218,9 +246,11 @@ void Gyro_I2C_SET() {
     // 1 = initial memory load failed
     // 2 = DMP configuration updates failed
     // (if it's going to break, usually the code will be 1)
+#ifdef SERIAL_DEBUG
     Serial.print(F("DMP Initialization failed (code "));
     Serial.print(devStatus);
     Serial.println(F(")"));
+#endif
   }
 }
 
@@ -253,8 +283,9 @@ void Gyro_I2C_GET() {
   if ((mpuIntStatus & 0x10) || fifoCount == 1024) {
     // reset so we can continue cleanly
     mpu.resetFIFO();
+#ifdef SERIAL_DEBUG
     Serial.println(F("FIFO overflow!"));
-
+#endif
     // otherwise, check for DMP data ready interrupt (this should happen frequently)
   } else if (mpuIntStatus & 0x02) {
     // wait for correct available data length, should be a VERY short wait
@@ -270,6 +301,7 @@ void Gyro_I2C_GET() {
     mpu.dmpGetQuaternion(&q, fifoBuffer);
     mpu.dmpGetGravity(&gravity, &q);
     mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
+#ifdef SERIAL_DEBUG
     Serial.print("ypr\t");
     Serial.print(ypr[0] * 180 / M_PI);
     Serial.print("\t");
@@ -277,6 +309,7 @@ void Gyro_I2C_GET() {
     Serial.print("\t");
     Serial.print(ypr[2] * 180 / M_PI);
     Serial.print("\t");
+#endif
 
     deg1 = ypr[0] * 180 / M_PI;   //センサの値を取得
     deg2 = ypr[2] * 180 / M_PI;   //センサの値を取得
@@ -284,12 +317,16 @@ void Gyro_I2C_GET() {
     deg1 += 90; //サーボ1の初期位置を180度にする
     deg2 = int(deg2);   //小数点切り捨て
     deg2 += 90; //サーボ2の初期位置を180度にする
-    Yaw_Servo.write(deg2/10, 5, false); // サーボの角度を設定
-    Pitch_Servo.write(deg1/10, 5, false); // サーボの角度を設定
-    Serial.print("deg1\t");
+    Yaw_Servo.write(deg2 / 10, 5, false); // サーボの角度を設定
+    Pitch_Servo.write(deg1 / 10, 5, false); // サーボの角度を設定
+
+#ifdef SERIAL_DEBUG
+    Serial.print("deg1:");
     Serial.print(deg1);
-    Serial.print("deg2\t");
+    Serial.print("\t");
+    Serial.print("deg2:");
     Serial.println(deg2);
+#endif
   }
 }
 
@@ -348,10 +385,11 @@ void init_TCS34725(void) {
 
 void get_TCS34725ID(void) {
   Readi2cRegisters(1, IDAddress);
-  if (i2cReadBuffer[0] = 0x44)
-    Serial.println("TCS34725 is present");
-  else
-    Serial.println("TCS34725 not responding");
+  if (i2cReadBuffer[0] = 0x44) {
+    //    Serial.println("TCS34725 is present");
+  } else {
+    //    Serial.println("TCS34725 not responding");
+  }
 }
 
 void get_Colors(void) {
@@ -386,74 +424,38 @@ void Arrow_Status(void) {
   prev_color = current_color;
   current_color = arrow_color;
 
-  /* 発射状態がtrueだったら抜ける */
-  if (launch_status) {
-    return;
-  }
-
-  if (current_color == "green" && prev_color == "red") {
-    pull_power += 1;
-    Rotate_Stepping();
-  } else if (current_color == "blue" && prev_color == "red") {
-    pull_power -= 1;
-    Reverse_Stepping();
-  } else if (current_color == "blue" && prev_color == "green") {
-    pull_power += 1;
-    Rotate_Stepping();
-  } else if (current_color == "red" && prev_color == "green") {
-    pull_power -= 1;
-    Reverse_Stepping();
-  } else if (current_color == "red" && prev_color == "blue") {
-    pull_power += 1;
-    Rotate_Stepping();
-  } else if (current_color == "green" && prev_color == "blue") {
-    pull_power -= 1;
-    Reverse_Stepping();
-  } else if (current_color == "none" && prev_color == "red") {
-    pull_power = 0;
-//    Launch_Arrow();   //矢の発射
+  /*発射の検知*/
+  if (current_color == "none" && prev_color == "red") {
+    sendIntData(1); // int型データの送信
+    delay(500);
+    sendIntData(2); // int型データの送信
+    delay(500);
   } else if (current_color == "none" && prev_color == "green") {
-    pull_power = 0;
-//    Launch_Arrow();   //矢の発射
+    sendIntData(3); // int型データの送信
+    delay(500);
+    sendIntData(4); // int型データの送信
+    delay(500);
   } else if (current_color == "none" && prev_color == "blue") {
-    pull_power = 0;
-//    Launch_Arrow();   //矢の発射
+    sendIntData(5); // int型データの送信
+    delay(500);
+    sendIntData(6); // int型データの送信
+    delay(500);
   } else if (current_color == "none" && prev_color == "none") {
+    sendIntData(9); // int型データの送信
     pull_power = 0;
+  } else {
   }
 
-  /* 誤って引く力がマイナスにならないように調整 */
-  if (pull_power < 0) {
-    pull_power = 0;
-  }
-
+#ifdef SERIAL_DEBUG
   Serial.print("\t");
   Serial.print("color : ");
   Serial.print(current_color);
-  Serial.print("\t");
-  Serial.print("pull_power : ");
-  Serial.print("\t");
-  Serial.println(pull_power);
+#endif
 }
 
-void Launch_Arrow() {
-  /* 発射処理中はステッピングが動かないようにステータスを変更 */
-  launch_status = true;
-
-  /* 発射用のサーボを回転させてトリガーを外す */
-  Launch_Servo.write(135, 0, true);
-
-  /* 威力調節用のステッピングを初期位置に戻す */
-  L6470_gohome();
-  delay(10000);
-
-  /* 発射用のサーボをトリガーに引っ掛けるように回転させる */
-  Launch_Servo.write(90, 10, true);
-
-  /* 発射処理中はステッピングが動かないようにステータスを変更 */
-  launch_status = false;
+void sendIntData(int value) {
+  Serial.write(value);
 }
-
 // ================================================================
 // ===                ステッピングモーター関連                  ===
 // ================================================================
@@ -624,10 +626,8 @@ void Init_Servo() {
   /* 初期のピン設定 */
   Yaw_Servo.attach(7);    //D8ピンをサーボの信号線として設定
   Pitch_Servo.attach(6);  //D6ピンをサーボの信号線として設定
-  Launch_Servo.attach(5);  //D4ピンをサーボの信号線として設定
 
   /* 初期のサーボの角度指定 */
-    Yaw_Servo.write(110,5,false);   // サーボの角度を設定
-    Pitch_Servo.write(180, 5, false); // サーボの角度を設定
-  //  Launch_Servo.write(180);  //D4ピンをサーボの信号線として設定
+  Yaw_Servo.write(110, 5, false); // サーボの角度を設定
+  Pitch_Servo.write(180, 5, false); // サーボの角度を設定
 }
