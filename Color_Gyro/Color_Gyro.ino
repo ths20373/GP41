@@ -48,12 +48,13 @@ float ypr[3];           // [yaw, pitch, roll]   yaw/pitch/roll container and gra
 // ================================================================
 // ===                    サーボの宣言関連                      ===
 // ================================================================
-//#include <Servo.h>
-#include "VarSpeedServo.h"    //速度調節用のサーボライブラリ
-VarSpeedServo Yaw_Servo;    //加速度ジャイロと組み合わせて発射機構の左右を決める
-VarSpeedServo Pitch_Servo;  //加速度ジャイロと組み合わせて発射機構の上下を決める
-VarSpeedServo Launch_Servo; //加速度ジャイロと組み合わせて発射機構の上下を決める（５個目は使わないかもしれない）
-VarSpeedServo servo6;  //発射の際のステッピングモータを動かすためのトルクの高いサーボ
+#include <Servo.h>
+//#include "VarSpeedServo.h"    //速度調節用のサーボライブラリ
+//VarSpeedServo Yaw_Servo;    //加速度ジャイロと組み合わせて発射機構の左右を決める
+//VarSpeedServo Pitch_Servo;  //加速度ジャイロと組み合わせて発射機構の上下を決める
+
+Servo Yaw_Servo;    //加速度ジャイロと組み合わせて発射機構の左右を決める
+Servo Pitch_Servo;  //加速度ジャイロと組み合わせて発射機構の上下を決める
 
 //グローバル関数の宣言
 char input[4];  // 文字列格納用
@@ -104,7 +105,7 @@ boolean launch_status = false;
 // ================================================================
 // ===          シリアルに出すデバッグ作用のデファイン          ===
 // ================================================================
-//#define SERIAL_DEBUG
+#define SERIAL_DEBUG
 
 // ================================================================
 // ===                      的の宣言関連                        ===
@@ -159,11 +160,11 @@ void setup() {
 
 void loop() {
   /* ジャイロセンサの値取得 */
-  Gyro_I2C_GET();
+  //  Gyro_I2C_GET();
   /* カラーセンサの値取得 */
-  get_Colors();
+  //  get_Colors();
   /* 弓をの状態を取得 */
-  Arrow_Status();
+  //  Arrow_Status();
 }
 
 // ================================================================
@@ -213,10 +214,10 @@ void Gyro_I2C_SET() {
 
   // supply your own gyro offsets here, scaled for min sensitivity
   /* 毎回動作させる前に専用のスケッチでオフセットを求める必要がある */
-  mpu.setXGyroOffset(91);
-  mpu.setYGyroOffset(-37);
-  mpu.setZGyroOffset(4);
-  mpu.setZAccelOffset(1482); // 1688 factory default for my test chip
+  mpu.setXGyroOffset(65);
+  mpu.setYGyroOffset(4);
+  mpu.setZGyroOffset(2);
+  mpu.setZAccelOffset(1643); // 1688 factory default for my test chip
 
   // make sure it worked (returns 0 if so)
   if (devStatus == 0) {
@@ -313,12 +314,16 @@ void Gyro_I2C_GET() {
 
     deg1 = ypr[0] * 180 / M_PI;   //センサの値を取得
     deg2 = ypr[2] * 180 / M_PI;   //センサの値を取得
+
     deg1 = int(deg1);   //小数点切り捨て
-    deg1 += 90; //サーボ1の初期位置を180度にする
     deg2 = int(deg2);   //小数点切り捨て
-    deg2 += 90; //サーボ2の初期位置を180度にする
-    Yaw_Servo.write(deg2 / 10, 5, false); // サーボの角度を設定
-    Pitch_Servo.write(deg1 / 10, 5, false); // サーボの角度を設定
+    deg1 /= 5;
+    deg2 /= 5;
+    deg1 += 90;
+    deg2 += 155;
+
+    Yaw_Servo.write(deg2); // サーボの角度を設定
+    Pitch_Servo.write(deg1); // サーボの角度を設定
 
 #ifdef SERIAL_DEBUG
     Serial.print("deg1:");
@@ -347,8 +352,8 @@ void Writei2cRegisters(byte numberbytes, byte command)
 }
 
 /*
-Send register address to this function and it returns byte value
-for the magnetometer register's contents
+  Send register address to this function and it returns byte value
+  for the magnetometer register's contents
 */
 byte Readi2cRegisters(int numberbytes, byte command)
 {
@@ -426,22 +431,10 @@ void Arrow_Status(void) {
 
   /*発射の検知*/
   if (current_color == "none" && prev_color == "red") {
-    sendIntData(1); // int型データの送信
-    delay(500);
-    sendIntData(2); // int型データの送信
-    delay(500);
   } else if (current_color == "none" && prev_color == "green") {
-    sendIntData(3); // int型データの送信
-    delay(500);
-    sendIntData(4); // int型データの送信
-    delay(500);
+    Serial.print(1);
   } else if (current_color == "none" && prev_color == "blue") {
-    sendIntData(5); // int型データの送信
-    delay(500);
-    sendIntData(6); // int型データの送信
-    delay(500);
   } else if (current_color == "none" && prev_color == "none") {
-    sendIntData(9); // int型データの送信
     pull_power = 0;
   } else {
   }
@@ -592,42 +585,42 @@ void L6470_hardhiz() {
 }
 
 /*L6470 コントロール　コマンド
- 引数-----------------------
- dia   1:正転 0:逆転,
- spd  (20bit)(0.015*spd[step/s])
- pos  (22bit)
- n_step (22bit)
- act   1:絶対座標をマーク  0:絶対座標リセット
- mssec ミリ秒
- val 各レジスタに書き込む値
- ---------------------------
- L6470_run(dia,spd); //指定方向に連続回転
- L6470_stepclock(dia); //指定方向にstepピンのクロックで回転
- L6470_move(dia,n_step); //指定方向に指定数ステップする
- L6470_goto(pos);　//指定座標に最短でいける回転方向で移動
- L6470_gotodia(dia,pos);　//回転方向を指定して指定座標に移動
- L6470_gountil(act,dia,spd);　//指定した回転方向に指定した速度で回転し、スイッチのONで急停止と座標処理
- L6470_relesesw(act,dia);　//スイッチがOFFに戻るまで最低速度で回転し、停止と座標処理
- L6470_gohome();　//座標原点に移動
- L6470_gomark();　//マーク座標に移動
- L6470_resetpos();　//絶対座標リセット
- L6470_resetdevice(); //L6470リセット
- L6470_softstop();　//回転停止、保持トルクあり
- L6470_hardstop();　//回転急停止、保持トルクあり
- L6470_softhiz(); //回転停止、保持トルクなし
- L6470_hardhiz(); //回転急停止、保持トルクなし
- L6470_getstatus(); //statusレジスタの値を返す （L6470_getparam_status();と同じ）
+  引数-----------------------
+  dia   1:正転 0:逆転,
+  spd  (20bit)(0.015*spd[step/s])
+  pos  (22bit)
+  n_step (22bit)
+  act   1:絶対座標をマーク  0:絶対座標リセット
+  mssec ミリ秒
+  val 各レジスタに書き込む値
+  ---------------------------
+  L6470_run(dia,spd); //指定方向に連続回転
+  L6470_stepclock(dia); //指定方向にstepピンのクロックで回転
+  L6470_move(dia,n_step); //指定方向に指定数ステップする
+  L6470_goto(pos);　//指定座標に最短でいける回転方向で移動
+  L6470_gotodia(dia,pos);　//回転方向を指定して指定座標に移動
+  L6470_gountil(act,dia,spd);　//指定した回転方向に指定した速度で回転し、スイッチのONで急停止と座標処理
+  L6470_relesesw(act,dia);　//スイッチがOFFに戻るまで最低速度で回転し、停止と座標処理
+  L6470_gohome();　//座標原点に移動
+  L6470_gomark();　//マーク座標に移動
+  L6470_resetpos();　//絶対座標リセット
+  L6470_resetdevice(); //L6470リセット
+  L6470_softstop();　//回転停止、保持トルクあり
+  L6470_hardstop();　//回転急停止、保持トルクあり
+  L6470_softhiz(); //回転停止、保持トルクなし
+  L6470_hardhiz(); //回転急停止、保持トルクなし
+  L6470_getstatus(); //statusレジスタの値を返す （L6470_getparam_status(); と同じ）
 */
-
 // ================================================================
 // ===                   サーボモーター関連                     ===
 // ================================================================
 void Init_Servo() {
   /* 初期のピン設定 */
-  Yaw_Servo.attach(7);    //D8ピンをサーボの信号線として設定
-  Pitch_Servo.attach(6);  //D6ピンをサーボの信号線として設定
+  Yaw_Servo.attach(12);    //回転
+  Pitch_Servo.attach(13); //上下
 
   /* 初期のサーボの角度指定 */
-  Yaw_Servo.write(110, 5, false); // サーボの角度を設定
-  Pitch_Servo.write(180, 5, false); // サーボの角度を設定
+  /* 的の真ん中に向けられるように */
+  Yaw_Servo.write(85); // サーボの初期角度を設定
+  Pitch_Servo.write(160); // サーボの初期角度を設定
 }
