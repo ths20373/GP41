@@ -60,8 +60,8 @@ Servo Pitch_Servo;  //加速度ジャイロと組み合わせて発射機構の�
 char input[4];  // 文字列格納用
 int i = 0;      // 文字数のカウンタ
 int val = 0;    // 受信した数値
-int deg1 = 0;    // サーボ1の角度
-int deg2 = 0;    // サーボ2の角度
+int Pitch_angle = 0;    // サーボ1の角度
+int Yaw_angle = 0;    // サーボ2の角度
 
 // ================================================================
 // ===                  カラーセンサの宣言関連                  ===
@@ -86,21 +86,6 @@ String prev_color = "none";
 int pull_power = 0;
 
 #define Color_Sensor_LED 4   //モータドライバ側の7pin
-
-// ================================================================
-// ===              ステッピングモータの宣言関連                ===
-// ================================================================
-#include <SPI.h>       //SPI通信
-
-// ピン定義
-//3pin_DriverSide GND
-//4pin_DriverSide 5v
-#define PIN_SPI_MOSI 11   //7pin_DriverSide UNO:11,MEGA:51
-#define PIN_SPI_MISO 12   //5pin_DriverSide UNO:12,MEGA:50
-#define PIN_SPI_SCK 13    //6pin_DriverSide UNO:13,MEGA:52
-#define PIN_SPI_SS 10     //8pin_DriverSide UNO:10,MEGA:53
-
-boolean launch_status = false;
 
 // ================================================================
 // ===          シリアルに出すデバッグ作用のデファイン          ===
@@ -146,10 +131,6 @@ void setup() {
   init_TCS34725();
   get_TCS34725ID();
 
-  /* ステッピングモータ(使わなくなったので消してもいいかも) */
-  //  Init_Stepping();
-  //  L6470_gohome();
-
   /* サーボモータ */
   Init_Servo();
 }
@@ -160,7 +141,7 @@ void setup() {
 
 void loop() {
   /* ジャイロセンサの値取得 */
-  //  Gyro_I2C_GET();
+  Gyro_I2C_GET();
   /* カラーセンサの値取得 */
   //  get_Colors();
   /* 弓をの状態を取得 */
@@ -312,25 +293,29 @@ void Gyro_I2C_GET() {
     Serial.print("\t");
 #endif
 
-    deg1 = ypr[0] * 180 / M_PI;   //センサの値を取得
-    deg2 = ypr[2] * 180 / M_PI;   //センサの値を取得
+    Yaw_angle = ypr[0] * 180 / M_PI;   //センサの値を取得
+    Pitch_angle = ypr[2] * 180 / M_PI;   //センサの値を取得
 
-    deg1 = int(deg1);   //小数点切り捨て
-    deg2 = int(deg2);   //小数点切り捨て
-    deg1 /= 5;
-    deg2 /= 5;
-    deg1 += 90;
-    deg2 += 155;
+    Yaw_angle = int(Yaw_angle);   //小数点切り捨て
+    Pitch_angle = int(Pitch_angle);   //小数点切り捨て
 
-    Yaw_Servo.write(deg2); // サーボの角度を設定
-    Pitch_Servo.write(deg1); // サーボの角度を設定
+    Yaw_angle /= 4;
+    Pitch_angle /= 4;
+
+    Yaw_angle += 70;
+    Pitch_angle += 85;
+
+//    Yaw_Servo.write(Yaw_angle); // サーボの角度を設定
+//    Pitch_Servo.write(Pitch_angle); // サーボの角度を設定
+    Yaw_Servo.write(70); // サーボの角度を設定
+    Pitch_Servo.write(75); // サーボの角度を設定
 
 #ifdef SERIAL_DEBUG
-    Serial.print("deg1:");
-    Serial.print(deg1);
+    Serial.print("Pitch_angle:");
+    Serial.print(Pitch_angle);
     Serial.print("\t");
-    Serial.print("deg2:");
-    Serial.println(deg2);
+    Serial.print("Yaw_angle:");
+    Serial.println(Yaw_angle);
 #endif
   }
 }
@@ -431,9 +416,13 @@ void Arrow_Status(void) {
 
   /*発射の検知*/
   if (current_color == "none" && prev_color == "red") {
+    //    if(Pitch_angle >= 70){
+    //      }
+    Serial.print(2);
   } else if (current_color == "none" && prev_color == "green") {
-    Serial.print(1);
+    Serial.print(2);
   } else if (current_color == "none" && prev_color == "blue") {
+    Serial.print(2);
   } else if (current_color == "none" && prev_color == "none") {
     pull_power = 0;
   } else {
@@ -450,177 +439,15 @@ void sendIntData(int value) {
   Serial.write(value);
 }
 // ================================================================
-// ===                ステッピングモーター関連                  ===
-// ================================================================
-void Init_Stepping() {
-  // ピン設定
-  pinMode(PIN_SPI_MOSI, OUTPUT);  //SPI通信用ピン
-  pinMode(PIN_SPI_MISO, INPUT);   //SPI通信用ピン
-  pinMode(PIN_SPI_SCK, OUTPUT);   //SPI通信用ピン
-  pinMode(PIN_SPI_SS, OUTPUT);    //SPI通信用ピン
-
-  digitalWrite(PIN_SPI_SS, HIGH); //SPI通信用ピンの一部をHighにする
-
-  //SPI通信開始
-  SPI.begin();               //SPI通信開始
-  SPI.setDataMode(SPI_MODE3);//SCKの立ち上がりでテータを送受信＆アイドル時はpinをHIGHに設定
-  SPI.setBitOrder(MSBFIRST); //MSBから送信
-  //SPI通信の前のコマンドの引数を消去
-  L6470_send(0x00);//nop
-  L6470_send(0x00);
-  L6470_send(0x00);
-  L6470_send(0x00);
-  //SPI通信デバイスリセットコマンド
-  L6470_send(0xc0);//ResetRevice
-  L6470_setup();//ステッピングモータセットアップ(L6470を設定)
-  delay(10);
-}
-
-/* ステッピングモータセットアップ */
-void L6470_setup() {
-  //最大回転スピード
-  L6470_send(0x07);//レジスタアドレス(0x07)
-  L6470_send(0x40);//値(10bit),デフォルト0x41
-  L6470_send(0x00);
-  //モータ停止中の電圧設定
-  L6470_send(0x09);//レジスタアドレス(0x09)
-  L6470_send(0x00);//値(8bit),デフォルト0x29
-  //モータ定速回転時の電圧設定
-  L6470_send(0x0a);//レジスタアドレス(0x0a)
-  L6470_send(0xff);//値(8bit),デフォルト0x29
-  //加速中の電圧設定
-  L6470_send(0x0b);//レジスタアドレス(0x0b)
-  L6470_send(0xa0);//値(8bit),デフォルト0x29
-  //減速中の電圧設定
-  L6470_send(0x0c);//レジスタアドレス(0x0c)
-  L6470_send(0x60);//値(8bit),デフォルト0x29
-  //フ ル ス テ ッ プ,ハ ー フ ス テ ッ プ,1/4, 1/8,…,1/128 ステップの設定
-  L6470_send(0x16);//レジスタアドレス(0x16)
-  L6470_send(0x00);//値(8bit)
-  //失速電流しきい値設定？
-  L6470_send(0x14);// レジスタアドレス
-  L6470_send(0x40);//値(7bit) デフォルト0x40
-}
-
-/* SPI通信でドライバーと通信 */
-void L6470_send(unsigned char add_or_val) {
-  digitalWrite(PIN_SPI_SS, LOW);
-  SPI.transfer(add_or_val); // アドレスもしくはデータ送信。
-  digitalWrite(PIN_SPI_SS, HIGH);
-}
-
-void Rotate_Stepping() {
-  L6470_move(0, 30);
-}
-
-void Reverse_Stepping() {
-  L6470_move(1, 30);
-}
-
-void L6470_transfer(int add, int bytes, long val) {
-  int data[3];
-  L6470_send(add);
-  for (int i = 0; i <= bytes - 1; i++) {
-    data[i] = val & 0xff;
-    val = val >> 8;
-  }
-  if (bytes == 3) {
-    L6470_send(data[2]);
-  }
-  if (bytes >= 2) {
-    L6470_send(data[1]);
-  }
-  if (bytes >= 1) {
-    L6470_send(data[0]);
-  }
-}
-
-void L6470_move(int dia, long n_step) {
-  if (dia == 1)
-    L6470_transfer(0x41, 3, n_step);
-  else
-    L6470_transfer(0x40, 3, n_step);
-}
-
-void L6470_run(int dia, long spd) {
-  if (dia == 1)
-    L6470_transfer(0x51, 3, spd);
-  else
-    L6470_transfer(0x50, 3, spd);
-}
-
-void L6470_gohome() {
-  L6470_transfer(0x70, 0, 0);
-}
-
-void L6470_resetdevice() {
-  L6470_send_u(0x00);//nop命令
-  L6470_send_u(0x00);
-  L6470_send_u(0x00);
-  L6470_send_u(0x00);
-  L6470_send_u(0xc0);
-}
-
-void L6470_send_u(unsigned char add_or_val) { //busyを確認せず送信するため用
-  digitalWrite(PIN_SPI_SS, LOW); // ~SSイネーブル。
-  SPI.transfer(add_or_val); // アドレスもしくはデータ送信。
-  digitalWrite(PIN_SPI_SS, HIGH); // ~SSディスエーブル。
-}
-
-// L6470_softstop();　//回転停止、保持トルクあり
-void L6470_softstop() {
-  L6470_transfer(0xb0, 0, 0);
-}
-// L6470_hardstop();　//回転急停止、保持トルクあり
-void L6470_hardstop() {
-  L6470_transfer(0xb8, 0, 0);
-}
-// L6470_softhiz(); //回転停止、保持トルクなし
-void L6470_softhiz() {
-  L6470_transfer(0xa0, 0, 0);
-}
-// L6470_hardhiz(); //回転急停止、保持トルクなし
-void L6470_hardhiz() {
-  L6470_transfer(0xa8, 0, 0);
-}
-
-/*L6470 コントロール　コマンド
-  引数-----------------------
-  dia   1:正転 0:逆転,
-  spd  (20bit)(0.015*spd[step/s])
-  pos  (22bit)
-  n_step (22bit)
-  act   1:絶対座標をマーク  0:絶対座標リセット
-  mssec ミリ秒
-  val 各レジスタに書き込む値
-  ---------------------------
-  L6470_run(dia,spd); //指定方向に連続回転
-  L6470_stepclock(dia); //指定方向にstepピンのクロックで回転
-  L6470_move(dia,n_step); //指定方向に指定数ステップする
-  L6470_goto(pos);　//指定座標に最短でいける回転方向で移動
-  L6470_gotodia(dia,pos);　//回転方向を指定して指定座標に移動
-  L6470_gountil(act,dia,spd);　//指定した回転方向に指定した速度で回転し、スイッチのONで急停止と座標処理
-  L6470_relesesw(act,dia);　//スイッチがOFFに戻るまで最低速度で回転し、停止と座標処理
-  L6470_gohome();　//座標原点に移動
-  L6470_gomark();　//マーク座標に移動
-  L6470_resetpos();　//絶対座標リセット
-  L6470_resetdevice(); //L6470リセット
-  L6470_softstop();　//回転停止、保持トルクあり
-  L6470_hardstop();　//回転急停止、保持トルクあり
-  L6470_softhiz(); //回転停止、保持トルクなし
-  L6470_hardhiz(); //回転急停止、保持トルクなし
-  L6470_getstatus(); //statusレジスタの値を返す （L6470_getparam_status(); と同じ）
-*/
-// ================================================================
 // ===                   サーボモーター関連                     ===
 // ================================================================
 void Init_Servo() {
   /* 初期のピン設定 */
-  Yaw_Servo.attach(12);    //回転
-  Pitch_Servo.attach(13); //上下
+  Yaw_Servo.attach(13);    //回転
+  Pitch_Servo.attach(12);  //上下
 
   /* 初期のサーボの角度指定 */
   /* 的の真ん中に向けられるように */
-  Yaw_Servo.write(85); // サーボの初期角度を設定
-  Pitch_Servo.write(160); // サーボの初期角度を設定
+  Yaw_Servo.write(70); // サーボの初期角度を設定
+  Pitch_Servo.write(85); // サーボの初期角度を設定
 }
