@@ -49,14 +49,9 @@ float ypr[3];           // [yaw, pitch, roll]   yaw/pitch/roll container and gra
 // ===                    サーボの宣言関連                      ===
 // ================================================================
 #include <Servo.h>
-//#include "VarSpeedServo.h"    //速度調節用のサーボライブラリ
-//VarSpeedServo Yaw_Servo;    //加速度ジャイロと組み合わせて発射機構の左右を決める
-//VarSpeedServo Pitch_Servo;  //加速度ジャイロと組み合わせて発射機構の上下を決める
-
 Servo Yaw_Servo;    //加速度ジャイロと組み合わせて発射機構の左右を決める
 Servo Pitch_Servo;  //加速度ジャイロと組み合わせて発射機構の上下を決める
 
-//グローバル関数の宣言
 char input[4];  // 文字列格納用
 int i = 0;      // 文字数のカウンタ
 int val = 0;    // 受信した数値
@@ -90,7 +85,7 @@ int pull_power = 0;
 // ================================================================
 // ===          シリアルに出すデバッグ作用のデファイン          ===
 // ================================================================
-#define SERIAL_DEBUG
+//#define SERIAL_DEBUG
 
 // ================================================================
 // ===                      的の宣言関連                        ===
@@ -141,7 +136,7 @@ void setup() {
 
 void loop() {
   /* ジャイロセンサの値取得 */
-  Gyro_I2C_GET();
+  //  Gyro_I2C_GET();
   /* カラーセンサの値取得 */
   //  get_Colors();
   /* 弓をの状態を取得 */
@@ -293,10 +288,10 @@ void Gyro_I2C_GET() {
     Serial.print("\t");
 #endif
 
-    Yaw_angle = ypr[0] * 180 / M_PI;   //センサの値を取得
+    Yaw_angle = ypr[0] * 180 / M_PI;     //センサの値を取得
     Pitch_angle = ypr[2] * 180 / M_PI;   //センサの値を取得
 
-    Yaw_angle = int(Yaw_angle);   //小数点切り捨て
+    Yaw_angle = int(Yaw_angle);       //小数点切り捨て
     Pitch_angle = int(Pitch_angle);   //小数点切り捨て
 
     Yaw_angle /= 4;
@@ -305,15 +300,13 @@ void Gyro_I2C_GET() {
     Yaw_angle += 70;
     Pitch_angle += 85;
 
-//    Yaw_Servo.write(Yaw_angle); // サーボの角度を設定
-//    Pitch_Servo.write(Pitch_angle); // サーボの角度を設定
-    Yaw_Servo.write(70); // サーボの角度を設定
-    Pitch_Servo.write(75); // サーボの角度を設定
+    Yaw_Servo.write(Yaw_angle); // サーボの角度を設定
+    Pitch_Servo.write(Pitch_angle); // サーボの角度を設定
 
 #ifdef SERIAL_DEBUG
     Serial.print("Pitch_angle:");
     Serial.print(Pitch_angle);
-    Serial.print("\t");
+    Serial.print(" ");
     Serial.print("Yaw_angle:");
     Serial.println(Yaw_angle);
 #endif
@@ -416,20 +409,22 @@ void Arrow_Status(void) {
 
   /*発射の検知*/
   if (current_color == "none" && prev_color == "red") {
-    //    if(Pitch_angle >= 70){
-    //      }
-    Serial.print(2);
+    /* 真ん中の判定 */
+    if ( (Yaw_angle >= 69 && Yaw_angle <= 71) && (Pitch_angle >= 84 && Pitch_angle <= 86) ) {
+      Serial.print(1);  //真ん中に当たった
+    } else if () {
+    }
   } else if (current_color == "none" && prev_color == "green") {
-    Serial.print(2);
+    if ( (Yaw_angle >= 69 && Yaw_angle <= 71) && (Pitch_angle >= 84 && Pitch_angle <= 86) ) {
+      Serial.print(1);
+    }
   } else if (current_color == "none" && prev_color == "blue") {
-    Serial.print(2);
-  } else if (current_color == "none" && prev_color == "none") {
-    pull_power = 0;
-  } else {
+    if ( (Yaw_angle >= 69 && Yaw_angle <= 71) && (Pitch_angle >= 84 && Pitch_angle <= 86) ) {
+      Serial.print(1);
+    }
   }
 
 #ifdef SERIAL_DEBUG
-  Serial.print("\t");
   Serial.print("color : ");
   Serial.print(current_color);
 #endif
