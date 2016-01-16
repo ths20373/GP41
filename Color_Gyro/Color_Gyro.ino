@@ -52,6 +52,12 @@ float ypr[3];           // [yaw, pitch, roll]   yaw/pitch/roll container and gra
 Servo Yaw_Servo;    //加速度ジャイロと組み合わせて発射機構の左右を決める
 Servo Pitch_Servo;  //加速度ジャイロと組み合わせて発射機構の上下を決める
 
+#define YAW_OFFSET 70
+#define PITCH_OFFSET 85
+#define CENTER_CIRCLE 3
+#define INNER_CIRCLE 6
+#define OUTER_CIRCLE 9
+
 char input[4];  // 文字列格納用
 int i = 0;      // 文字数のカウンタ
 int val = 0;    // 受信した数値
@@ -297,10 +303,10 @@ void Gyro_I2C_GET() {
     Yaw_angle /= 4;
     Pitch_angle /= 4;
 
-    Yaw_angle += 70;
-    Pitch_angle += 85;
+    Yaw_angle += YAW_OFFSET;
+    Pitch_angle += PITCH_OFFSET;
 
-    Yaw_Servo.write(Yaw_angle); // サーボの角度を設定
+    Yaw_Servo.write(Yaw_angle);     // サーボの角度を設定
     Pitch_Servo.write(Pitch_angle); // サーボの角度を設定
 
 #ifdef SERIAL_DEBUG
@@ -360,10 +366,6 @@ void init_TCS34725(void) {
   Writei2cRegisters(1, ControlAddress); // RGBC gain control
   i2cWriteBuffer[0] = 0x03;
   Writei2cRegisters(1, EnableAddress);   // enable ADs and oscillator for sensor
-
-  //カラーセンサのLEDを消す
-  //  pinMode(Color_Sensor_LED, OUTPUT);     // 出力に設定
-  //  digitalWrite(Color_Sensor_LED, LOW);   // LEDをオフ
 }
 
 void get_TCS34725ID(void) {
@@ -404,23 +406,53 @@ void get_Colors(void) {
 // ===                     弓矢の状態関連                       ===
 // ================================================================
 void Arrow_Status(void) {
+  int Yaw_diff = 0;
+  int Pitch_diff = 0;
+
   prev_color = current_color;
   current_color = arrow_color;
 
+  Yaw_diff = abs(YAW_OFFSET - Yaw_angle);
+  Pitch_diff = abs(PITCH_OFFSET - Pitch_angle);
+
   /*発射の検知*/
-  if (current_color == "none" && prev_color == "red") {
-    /* 真ん中の判定 */
-    if ( (Yaw_angle >= 69 && Yaw_angle <= 71) && (Pitch_angle >= 84 && Pitch_angle <= 86) ) {
-      Serial.print(1);  //真ん中に当たった
-    } else if () {
-    }
-  } else if (current_color == "none" && prev_color == "green") {
-    if ( (Yaw_angle >= 69 && Yaw_angle <= 71) && (Pitch_angle >= 84 && Pitch_angle <= 86) ) {
+  if (current_color == "none" && !(prev_color == "none")) {
+    if ( sqrt(Yaw_diff ^ 2 + Pitch_diff ^ 2) <= CENTER_CIRCLE) {
+      /* 真ん中の判定 */
       Serial.print(1);
-    }
-  } else if (current_color == "none" && prev_color == "blue") {
-    if ( (Yaw_angle >= 69 && Yaw_angle <= 71) && (Pitch_angle >= 84 && Pitch_angle <= 86) ) {
-      Serial.print(1);
+    } else if ( (sqrt(Yaw_diff ^ 2 + Pitch_diff ^ 2) >= CENTER_CIRCLE) && (sqrt(Yaw_diff ^ 2 + Pitch_diff ^ 2) <= INNER_CIRCLE) ) {
+      /* 内円のどこに当たっているか */
+      if (YAW_OFFSET > Yaw_angle ) {
+        if (PITCH_OFFSET > Pitch_angle) {
+          Serial.print(6);
+        } else {
+          Serial.print(4);
+        }
+      } else {
+        if (PITCH_OFFSET > Pitch_angle) {
+          Serial.print(7);
+        } else {
+          Serial.print(5);
+        }
+      }
+    } else if ( (sqrt(Yaw_diff ^ 2 + Pitch_diff ^ 2) >= INNER_CIRCLE) && (sqrt(Yaw_diff ^ 2 + Pitch_diff ^ 2) <= OUTER_CIRCLE) ) {
+      /* 外円のどこに当たっているか */
+      if (YAW_OFFSET > Yaw_angle ) {
+        if (PITCH_OFFSET > Pitch_angle) {
+          Serial.print(8);
+        } else {
+          Serial.print(2);
+        }
+      } else {
+        if (PITCH_OFFSET > Pitch_angle) {
+          Serial.print(9);
+        } else {
+          Serial.print(3);
+        }
+      }
+    } else {
+      /* ハズレ */
+      Serial.print(0);
     }
   }
 
@@ -430,9 +462,6 @@ void Arrow_Status(void) {
 #endif
 }
 
-void sendIntData(int value) {
-  Serial.write(value);
-}
 // ================================================================
 // ===                   サーボモーター関連                     ===
 // ================================================================
@@ -443,6 +472,6 @@ void Init_Servo() {
 
   /* 初期のサーボの角度指定 */
   /* 的の真ん中に向けられるように */
-  Yaw_Servo.write(70); // サーボの初期角度を設定
-  Pitch_Servo.write(85); // サーボの初期角度を設定
+  Yaw_Servo.write(YAW_OFFSET); // サーボの初期角度を設定
+  Pitch_Servo.write(PITCH_OFFSET); // サーボの初期角度を設定
 }
